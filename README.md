@@ -34,7 +34,7 @@
 - Built-in demo testimony for immediate evaluation
 
 ### AI-Powered Analysis Pipeline
-- **Transcription**: Groq Whisper large-v3 with word-level timestamps and language identification
+- **Transcription**: Mistral Voxtral (voxtral-mini-latest) with word-level timestamps and language identification
 - **Entity Extraction**: Mistral Large identifies persons, locations, organizations, dates, incidents, military identifiers, and SIGINT references
 - **Translation**: Automatic translation to English with original text preservation
 - **Legal Annotation**: Key phrases annotated with evidentiary significance and ICC legal relevance
@@ -94,7 +94,7 @@
 ```
 Client (Next.js App Router)
     |
-    |-- /api/transcribe  -->  Groq Whisper large-v3
+  |-- /api/transcribe  -->  Mistral Voxtral (voxtral-mini-latest)
     |-- /api/analyze     -->  Mistral Large (entity extraction, translation, annotation)
     |-- /api/crossreference --> Local five-database matching engine
     |-- /api/memo        -->  Mistral Large (ICC memo generation)
@@ -113,7 +113,7 @@ All AI inference runs server-side via Next.js API routes. No testimony data is p
 | Stage | Process | Model / Engine |
 |-------|---------|----------------|
 | 1. Ingest | Accept audio file, text input, or microphone recording | Browser MediaRecorder / File API |
-| 2. Transcribe | Generate timestamped transcript with language detection | Groq Whisper large-v3 |
+| 2. Transcribe | Generate timestamped transcript with language detection | Mistral Voxtral (voxtral-mini-latest) |
 | 3. Analyze | Extract entities, translate, annotate legal significance | Mistral Large |
 | 4. Cross-Reference | Match entities against ICC, UN, ACLED, Amnesty, HRW databases | Custom fuzzy matching engine |
 | 5. Generate Memo | Produce structured evidentiary pre-analysis memo | Mistral Large |
@@ -129,7 +129,7 @@ All AI inference runs server-side via Next.js API routes. No testimony data is p
 | Styling | Tailwind CSS 4, dark/light theme system |
 | State Management | Zustand 5 with localStorage persistence |
 | AI — Analysis | Mistral Large (mistral-large-latest) |
-| AI — Transcription | Groq Whisper large-v3 |
+| AI — Transcription | Mistral Voxtral (voxtral-mini-latest) |
 | AI — Voice | ElevenLabs Multilingual v2 |
 | Rich Text Editor | TipTap |
 | PDF Generation | @react-pdf/renderer |
@@ -157,8 +157,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MISTRAL_API_KEY` | Yes | Mistral AI API key for analysis and memo generation |
-| `GROQ_API_KEY` | Yes | Groq API key for Whisper transcription |
+| `MISTRAL_API_KEY` | Yes | Mistral AI API key for analysis, memo generation, and transcription |
 | `ELEVENLABS_API_KEY` | Yes | ElevenLabs API key for voice synthesis |
 | `ELEVENLABS_VOICE_ID` | No | ElevenLabs voice ID (defaults to Rachel) |
 | `NEXT_PUBLIC_APP_URL` | No | Application URL (defaults to localhost:3000) |
@@ -198,7 +197,7 @@ Witness/
       demo/route.ts          # Demo testimony loader
   components/
     theme-toggle.tsx         # Dark/light mode switch
-    speech-input.tsx         # Microphone recording with Whisper
+    speech-input.tsx         # Microphone recording with Voxtral
     upload-zone.tsx          # Audio file drag-and-drop
     testimony-editor.tsx     # TipTap rich text editor
     processing-progress.tsx  # Pipeline progress indicator
@@ -211,7 +210,7 @@ Witness/
     error-boundary.tsx       # React error boundary
   lib/
     mistral.ts               # Mistral AI client
-    whisper.ts               # Groq Whisper client
+    whisper.ts               # Mistral Voxtral client
     elevenlabs.ts            # ElevenLabs client
     crossreference.ts        # Five-database matching engine
     rate-limit.ts            # Per-IP token bucket rate limiter

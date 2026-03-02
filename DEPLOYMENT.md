@@ -7,7 +7,6 @@
 3. Import your GitHub repository
 4. Set environment variables in Vercel dashboard:
    - `MISTRAL_API_KEY`
-   - `GROQ_API_KEY`
    - `ELEVENLABS_API_KEY`
    - `ELEVENLABS_VOICE_ID` (optional, defaults to Rachel)
 5. Deploy — Vercel auto-detects Next.js
@@ -16,7 +15,7 @@
 
 ### Prerequisites
 - Docker & Docker Compose installed
-- API keys for Mistral, Groq, ElevenLabs
+- API keys for Mistral and ElevenLabs
 
 ### Steps
 
@@ -71,8 +70,7 @@ App runs at http://localhost:3000.
 
 | Variable | Required | Description |
 |---|---|---|
-| `MISTRAL_API_KEY` | ✅ | Mistral AI API key for analysis & memo generation |
-| `GROQ_API_KEY` | ✅ | Groq API key for Whisper transcription |
+| `MISTRAL_API_KEY` | ✅ | Mistral AI API key for analysis, memo generation, and transcription |
 | `ELEVENLABS_API_KEY` | ✅ | ElevenLabs API key for voice synthesis |
 | `ELEVENLABS_VOICE_ID` | Optional | Voice ID (default: Rachel `21m00Tcm4TlvDq8ikWAM`) |
 
