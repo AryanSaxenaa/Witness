@@ -85,7 +85,7 @@ export interface CaseMetadata {
 
 export interface SessionState {
   currentStep: ProcessingStep
-  inputMode: 'audio' | 'text' | null
+  inputMode: 'audio' | 'text' | 'voice' | null
   sourceFile: string | null
   transcriptionResult: TranscriptionResult | null
   analysisResult: AnalysisResult | null

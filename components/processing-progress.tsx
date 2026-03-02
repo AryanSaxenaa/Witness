@@ -29,12 +29,12 @@ const STEP_DETAIL: Partial<Record<ProcessingStep, string>> = {
 
 interface ProcessingProgressProps {
   currentStep: ProcessingStep
-  inputMode?: 'audio' | 'text' | null
+  inputMode?: 'audio' | 'text' | 'voice' | null
   error?: string | null
 }
 
 export function ProcessingProgress({ currentStep, inputMode, error }: ProcessingProgressProps) {
-  const steps = inputMode === 'text' ? TEXT_STEPS : AUDIO_STEPS
+  const steps = inputMode === 'audio' ? AUDIO_STEPS : TEXT_STEPS
   const currentIndex = steps.findIndex((s) => s.key === currentStep)
 
   return (
