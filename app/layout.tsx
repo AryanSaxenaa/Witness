@@ -7,6 +7,21 @@ import { Toaster } from 'react-hot-toast'
 export const metadata: Metadata = {
   title: 'WITNESS | AI-Powered Evidence Preservation',
   description: 'AI-assisted evidence preservation for human rights organizations. Pre-analysis tool for ICC testimony processing.',
+  keywords: ['ICC', 'evidence preservation', 'human rights', 'testimony analysis', 'AI', 'international criminal law'],
+  authors: [{ name: 'WITNESS' }],
+  openGraph: {
+    title: 'WITNESS — AI-Powered Evidence Preservation',
+    description: 'Transcribe, analyze, cross-reference and export testimony evidence for ICC proceedings. Powered by Mistral AI and Whisper.',
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'WITNESS',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'WITNESS — AI-Powered Evidence Preservation',
+    description: 'Transcribe, analyze, cross-reference and export testimony evidence for ICC proceedings.',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function RootLayout({

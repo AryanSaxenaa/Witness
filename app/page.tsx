@@ -1,16 +1,21 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/session'
 import { UploadZone } from '@/components/upload-zone'
 import { TestimonyEditor } from '@/components/testimony-editor'
 import { SpeechInput } from '@/components/speech-input'
 import { ProcessingProgress } from '@/components/processing-progress'
+import { SkeletonLoader } from '@/components/skeleton-loader'
+import { StreamPreview } from '@/components/stream-preview'
 import { cn } from '@/lib/utils'
 import { fetchWithRetry } from '@/lib/retry'
+import { consumeSSEStream } from '@/lib/stream-client'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { PageTransition } from '@/components/page-transition'
 import toast from 'react-hot-toast'
+import type { AnalysisResult, EvidentiaryMemo } from '@/types'
 
 const NAV_STEPS = [
   { num: '01', label: 'Ingest Evidence' },
@@ -66,8 +71,24 @@ export default function Home() {
   const [recordedAt, setRecordedAt] = useState(new Date().toISOString().slice(0, 16))
   const [isLoadingDemo, setIsLoadingDemo] = useState(false)
   const [speechLangCode, setSpeechLangCode] = useState('')  // BCP-47 code from voice input
+  const [streamingText, setStreamingText] = useState('')
+  const [streamLabel, setStreamLabel] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
 
   const isProcessing = currentStep !== 'idle' && currentStep !== 'error' && currentStep !== 'complete'
+
+  const handleCancel = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+    setStep('idle')
+    setError(null)
+    setStreamingText('')
+    setStreamLabel('')
+    addAuditEntry({ step: currentStep, action: 'PIPELINE_CANCELLED', detail: 'User cancelled in-flight analysis' })
+    toast('Analysis cancelled', { icon: '⛔' })
+  }, [setStep, setError, addAuditEntry, currentStep])
 
   const onFileAccepted = useCallback((file: File) => {
     setAudioFile(file)
@@ -128,6 +149,11 @@ export default function Home() {
     // Clear any stale results from a previous run
     clearResults()
 
+    // Create abort controller for cancellation support
+    const controller = new AbortController()
+    abortRef.current = controller
+    const { signal } = controller
+
     try {
       const parsedDate = new Date(recordedAt)
       const caseMetadata = {
@@ -152,6 +178,7 @@ export default function Home() {
         const transcribeRes = await fetchWithRetry('/api/transcribe', {
           method: 'POST',
           body: formData,
+          signal,
         })
 
         if (!transcribeRes.ok) {
@@ -172,20 +199,16 @@ export default function Home() {
         detectedLanguage = speechLangCode ? speechLangCode.split('-')[0] : 'auto'
       }
 
-      // Step 2: Analyze
+      // Step 2: Analyze (streaming)
       setStep('analyzing')
-      const analyzeRes = await fetchWithRetry('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript, detectedLanguage }),
+      setStreamingText('')
+      setStreamLabel('AI Analysis — Entity Extraction & Translation')
+      const analysis = await consumeSSEStream<AnalysisResult>('/api/analyze-stream', { transcript, detectedLanguage }, {
+        signal,
+        onChunk: (text) => setStreamingText(prev => prev + text),
       })
-
-      if (!analyzeRes.ok) {
-        const err = await analyzeRes.json()
-        throw new Error(err.error || 'Analysis failed')
-      }
-
-      const analysis = await analyzeRes.json()
+      setStreamingText('')
+      setStreamLabel('')
       setAnalysisResult(analysis)
 
       // Step 3: Cross-reference
@@ -194,6 +217,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ entities: analysis.entities }),
+        signal,
       })
 
       if (!crossRefRes.ok) {
@@ -204,24 +228,20 @@ export default function Home() {
       const crossRef = await crossRefRes.json()
       setCrossReferenceResult(crossRef)
 
-      // Step 4: Generate memo
+      // Step 4: Generate memo (streaming)
       setStep('generating')
-      const memoRes = await fetchWithRetry('/api/memo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysisResult: analysis,
-          crossReferenceResult: crossRef,
-          caseMetadata,
-        }),
+      setStreamingText('')
+      setStreamLabel('Generating ICC Evidentiary Memo')
+      const memo = await consumeSSEStream<EvidentiaryMemo>('/api/memo-stream', {
+        analysisResult: analysis,
+        crossReferenceResult: crossRef,
+        caseMetadata,
+      }, {
+        signal,
+        onChunk: (text) => setStreamingText(prev => prev + text),
       })
-
-      if (!memoRes.ok) {
-        const err = await memoRes.json()
-        throw new Error(err.error || 'Memo generation failed')
-      }
-
-      const memo = await memoRes.json()
+      setStreamingText('')
+      setStreamLabel('')
       setMemo(memo)
 
       setStep('complete')
@@ -229,18 +249,24 @@ export default function Home() {
       toast.success('Analysis complete — memo generated')
       router.push('/results')
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return // cancelled by user
       const message = err instanceof Error ? err.message : 'An unknown error occurred'
       setError(message)
+      setStreamingText('')
+      setStreamLabel('')
       toast.error(message)
+    } finally {
+      abortRef.current = null
     }
   }
 
   const activeNavIndex = stepToNavIndex(currentStep)
 
   return (
-    <div className="flex h-[calc(100vh-32px)] overflow-hidden">
-      {/* Nav Rail */}
-      <nav className="flex flex-shrink-0 border-r border-white/10" aria-label="Pipeline steps">
+    <PageTransition>
+    <div className="flex flex-col md:flex-row h-[calc(100vh-32px)] overflow-hidden">
+      {/* Nav Rail — hidden on mobile */}
+      <nav className="hidden md:flex flex-shrink-0 border-r border-white/10" aria-label="Pipeline steps">
         {NAV_STEPS.map((step, i) => {
           const isActive = i === activeNavIndex
           const isCompleted = i < activeNavIndex
@@ -279,15 +305,22 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden" role="main" aria-label="Evidence intake workspace">
         {/* Header */}
-        <header className="flex items-center justify-between px-8 py-4 border-b border-witness-border flex-shrink-0">
+        <header className="flex flex-wrap items-center justify-between px-4 md:px-8 py-4 border-b border-witness-border flex-shrink-0 gap-2">
           <div className="flex items-center gap-4">
             <h1 className="font-serif text-xl tracking-wide">WITNESS</h1>
-            <span className="text-xs text-witness-grey border border-witness-border px-2 py-0.5 uppercase tracking-widest">
+            <span className="text-xs text-witness-grey border border-witness-border px-2 py-0.5 uppercase tracking-widest hidden sm:inline">
               Evidence Intake
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
             <ThemeToggle />
+            <button
+              onClick={() => router.push('/compare')}
+              className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-3 py-1.5"
+              aria-label="Compare testimonies"
+            >
+              Compare
+            </button>
             <button
               onClick={() => router.push('/history')}
               className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-3 py-1.5"
@@ -301,9 +334,9 @@ export default function Home() {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Left Panel — Source Material */}
-          <div className="w-[400px] flex-shrink-0 border-r border-witness-border overflow-y-auto p-6 flex flex-col gap-6">
+          <div className="w-full md:w-[400px] flex-shrink-0 border-b md:border-b-0 md:border-r border-witness-border overflow-y-auto p-4 md:p-6 flex flex-col gap-6">
             <div>
               <div className="text-xs text-witness-grey uppercase tracking-widest mb-4 pb-2 border-b border-witness-border">
                 Source Material
@@ -398,9 +431,13 @@ export default function Home() {
           </div>
 
           {/* Right Panel — Processing / Preview */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-6">
             {isProcessing ? (
-              <ProcessingProgress currentStep={currentStep} inputMode={inputMode} error={error} />
+              <div className="flex flex-col gap-6">
+                <ProcessingProgress currentStep={currentStep} inputMode={inputMode} error={error} />
+                <StreamPreview text={streamingText} label={streamLabel} />
+                <SkeletonLoader step={currentStep} />
+              </div>
             ) : currentStep === 'error' ? (
               <div className="flex flex-col gap-4">
                 <ProcessingProgress currentStep={currentStep} inputMode={inputMode} error={error} />
@@ -449,7 +486,7 @@ export default function Home() {
         </div>
 
         {/* Action Bar */}
-        <div className="flex items-center justify-between px-8 py-4 border-t border-witness-border flex-shrink-0 bg-navy-light">
+        <div className="flex flex-wrap items-center justify-between px-4 md:px-8 py-4 border-t border-witness-border flex-shrink-0 bg-navy-light gap-2">
           <div className="text-xs text-witness-grey">
             {inputMode === 'audio' && audioFile
               ? `Audio: ${audioFile.name} (${(audioFile.size / 1024 / 1024).toFixed(1)}MB)`
@@ -457,21 +494,33 @@ export default function Home() {
               ? `Text: ${textInput.length} characters`
               : 'No evidence loaded'}
           </div>
-          <button
-            onClick={handleBeginAnalysis}
-            disabled={!canSubmit}
-            aria-label="Begin analysis pipeline"
-            className={cn(
-              'px-8 py-3 text-xs uppercase tracking-wider font-medium transition-colors',
-              canSubmit
-                ? 'bg-witness-red border border-witness-red text-white hover:bg-witness-red-bright'
-                : 'border border-witness-border text-witness-border cursor-not-allowed'
+          <div className="flex items-center gap-3">
+            {isProcessing && (
+              <button
+                onClick={handleCancel}
+                className="px-6 py-3 text-xs uppercase tracking-wider font-medium border border-witness-border text-witness-grey hover:border-red-500 hover:text-red-400 transition-colors"
+                aria-label="Cancel analysis pipeline"
+              >
+                Cancel
+              </button>
             )}
-          >
-            Begin Analysis →
-          </button>
+            <button
+              onClick={handleBeginAnalysis}
+              disabled={!canSubmit}
+              aria-label="Begin analysis pipeline"
+              className={cn(
+                'px-8 py-3 text-xs uppercase tracking-wider font-medium transition-colors',
+                canSubmit
+                  ? 'bg-witness-red border border-witness-red text-white hover:bg-witness-red-bright'
+                  : 'border border-witness-border text-witness-border cursor-not-allowed'
+              )}
+            >
+              Begin Analysis →
+            </button>
+          </div>
         </div>
       </main>
     </div>
+    </PageTransition>
   )
 }

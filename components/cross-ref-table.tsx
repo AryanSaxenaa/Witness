@@ -31,14 +31,26 @@ const THRESHOLD_PRESETS = [
   { label: '≥70%', value: 0.7 },
 ]
 
+const PAGE_SIZE = 10
+
 interface CrossRefTableProps {
   matches: CrossReferenceMatch[]
 }
 
 export function CrossRefTable({ matches }: CrossRefTableProps) {
   const [threshold, setThreshold] = useState(0)
+  const [page, setPage] = useState(0)
 
   const filtered = matches.filter(m => m.corroborationStrength >= threshold)
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
+  const paginated = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
+
+  // Reset to first page when threshold changes
+  const handleThreshold = (v: number) => {
+    setThreshold(v)
+    setPage(0)
+  }
 
   if (matches.length === 0) {
     return <p className="text-witness-grey text-sm italic">No cross-reference matches found.</p>
@@ -47,13 +59,13 @@ export function CrossRefTable({ matches }: CrossRefTableProps) {
   return (
     <div className="flex flex-col gap-3">
       {/* Confidence Threshold Filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[10px] text-witness-grey uppercase tracking-widest">Min Strength</span>
         <div className="flex gap-1">
           {THRESHOLD_PRESETS.map((preset) => (
             <button
               key={preset.value}
-              onClick={() => setThreshold(preset.value)}
+              onClick={() => handleThreshold(preset.value)}
               className={cn(
                 'px-2 py-0.5 text-[10px] uppercase tracking-wider border transition-colors',
                 threshold === preset.value
@@ -85,7 +97,7 @@ export function CrossRefTable({ matches }: CrossRefTableProps) {
           </tr>
         </thead>
         <tbody>
-          {filtered.map((match, i) => (
+          {paginated.map((match, i) => (
             <tr key={i} className="border-b border-witness-border/40 hover:bg-white/[0.02]">
               <td className="py-2 pr-3 text-white font-medium max-w-[140px] truncate" title={match.entityText}>
                 {match.entityText}
@@ -126,6 +138,49 @@ export function CrossRefTable({ matches }: CrossRefTableProps) {
         </tbody>
       </table>
       </div>
+
+      {/* Pagination */}
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[10px] text-witness-grey">
+            Page {safePage + 1} of {pageCount}
+          </span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage(0)}
+              disabled={safePage === 0}
+              className="px-2 py-0.5 text-[10px] border border-witness-border text-witness-grey hover:text-white disabled:opacity-30 transition-colors"
+              aria-label="First page"
+            >
+              ««
+            </button>
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="px-2 py-0.5 text-[10px] border border-witness-border text-witness-grey hover:text-white disabled:opacity-30 transition-colors"
+              aria-label="Previous page"
+            >
+              «
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              className="px-2 py-0.5 text-[10px] border border-witness-border text-witness-grey hover:text-white disabled:opacity-30 transition-colors"
+              aria-label="Next page"
+            >
+              »
+            </button>
+            <button
+              onClick={() => setPage(pageCount - 1)}
+              disabled={safePage >= pageCount - 1}
+              className="px-2 py-0.5 text-[10px] border border-witness-border text-witness-grey hover:text-white disabled:opacity-30 transition-colors"
+              aria-label="Last page"
+            >
+              »»
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/session'
 import { MemoDisplay } from '@/components/memo-display'
 import { EntityTable } from '@/components/entity-table'
+import { EntityGraph } from '@/components/entity-graph'
 import { formatTimestamp, truncateForVoice, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { PageTransition } from '@/components/page-transition'
+import { redactWithEntities, countPII } from '@/lib/redact'
 import toast from 'react-hot-toast'
 import type { ExtractedEntity } from '@/types'
 
@@ -104,6 +107,9 @@ export default function ResultsPage() {
   const { memo, analysisResult, transcriptionResult, crossReferenceResult, auditLog, reset } = useSessionStore()
   const [isGeneratingVoice, setIsGeneratingVoice] = useState(false)
   const [showAuditLog, setShowAuditLog] = useState(false)
+  const [redacted, setRedacted] = useState(false)
+
+  const piiCount = analysisResult ? countPII(analysisResult.entities) : 0
 
   useEffect(() => {
     if (!memo) {
@@ -205,9 +211,10 @@ export default function ResultsPage() {
   if (!memo || !analysisResult) return null
 
   return (
-    <div className="flex h-[calc(100vh-32px)] overflow-hidden">
-      {/* Nav Rail */}
-      <nav className="flex flex-shrink-0 border-r border-white/10" aria-label="Pipeline steps">
+    <PageTransition>
+    <div className="flex flex-col md:flex-row h-[calc(100vh-32px)] overflow-hidden">
+      {/* Nav Rail — hidden on mobile */}
+      <nav className="hidden md:flex flex-shrink-0 border-r border-white/10" aria-label="Pipeline steps">
         {NAV_STEPS.map((step, i) => (
           <div
             key={step.num}
@@ -230,17 +237,17 @@ export default function ResultsPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-center justify-between px-8 py-4 border-b border-witness-border flex-shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="flex flex-wrap items-center justify-between px-4 md:px-8 py-4 border-b border-witness-border flex-shrink-0 gap-2">
+          <div className="flex items-center gap-2 md:gap-4">
             <h1 className="font-serif text-xl tracking-wide">WITNESS</h1>
-            <span className="text-xs text-witness-grey border border-witness-border px-2 py-0.5 uppercase tracking-widest">
+            <span className="text-xs text-witness-grey border border-witness-border px-2 py-0.5 uppercase tracking-widest hidden sm:inline">
               {memo.caseRef}
             </span>
-            <span className="text-xs font-bold border border-witness-grey px-2 py-0.5 text-witness-grey tracking-wider">
+            <span className="text-xs font-bold border border-witness-grey px-2 py-0.5 text-witness-grey tracking-wider hidden sm:inline">
               DRAFT
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
             <ThemeToggle />
             <button
               onClick={() => router.push('/history')}
@@ -262,6 +269,22 @@ export default function ResultsPage() {
               Audit Log
             </button>
             <button
+              onClick={() => {
+                setRedacted(!redacted)
+                toast(redacted ? 'PII visible' : `PII redacted (${piiCount} entities)`, { icon: redacted ? '👁' : '🔒' })
+              }}
+              className={cn(
+                'text-xs uppercase tracking-wider border transition-colors px-3 py-1.5',
+                redacted
+                  ? 'border-orange-500 bg-orange-500/20 text-orange-300'
+                  : 'border-witness-border text-witness-grey hover:border-orange-400 hover:text-orange-300'
+              )}
+              aria-label="Toggle PII redaction"
+              aria-pressed={redacted}
+            >
+              {redacted ? '🔒 Redacted' : 'Redact PII'}
+            </button>
+            <button
               onClick={handleExportEvidencePackage}
               className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-green-500 hover:text-green-400 transition-colors px-3 py-1.5"
               aria-label="Export complete evidence package with audit trail"
@@ -279,10 +302,10 @@ export default function ResultsPage() {
           </div>
         </header>
 
-        {/* Three-column layout */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Three-column layout — stacks on mobile */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Left — Transcript */}
-          <div className="w-[350px] flex-shrink-0 border-r border-witness-border overflow-y-auto p-6">
+          <div className="w-full md:w-[350px] flex-shrink-0 border-b md:border-b-0 md:border-r border-witness-border overflow-y-auto p-4 md:p-6">
             <div className="text-xs text-witness-grey uppercase tracking-widest mb-4 pb-2 border-b border-witness-border">
               Transcript
             </div>
@@ -306,19 +329,21 @@ export default function ResultsPage() {
                     <span className="text-[10px] text-witness-grey font-mono flex-shrink-0 w-16 pt-0.5">
                       {formatTimestamp(seg.start)}
                     </span>
-                    <p className="text-sm leading-relaxed text-white/80">{seg.text}</p>
+                    <p className="text-sm leading-relaxed text-white/80">
+                      {redacted ? redactWithEntities(seg.text, analysisResult?.entities ?? []) : seg.text}
+                    </p>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-sm leading-relaxed text-white/80 whitespace-pre-wrap">
-                {analysisResult.originalText}
+                {redacted ? redactWithEntities(analysisResult.originalText, analysisResult.entities) : analysisResult.originalText}
               </div>
             )}
           </div>
 
           {/* Center — Entity Highlights */}
-          <div className="flex-1 border-r border-witness-border overflow-y-auto p-6">
+          <div className="flex-1 border-b md:border-b-0 md:border-r border-witness-border overflow-y-auto p-4 md:p-6">
             <div className="text-xs text-witness-grey uppercase tracking-widest mb-4 pb-2 border-b border-witness-border">
               Analysis Matrix
             </div>
@@ -329,7 +354,9 @@ export default function ResultsPage() {
                 Entity-Annotated Text
               </div>
               <div className="text-sm leading-relaxed text-white/80 whitespace-pre-wrap">
-                {renderHighlightedTranscript(analysisResult.translatedText, analysisResult.entities)}
+                {redacted
+                  ? redactWithEntities(analysisResult.translatedText, analysisResult.entities)
+                  : renderHighlightedTranscript(analysisResult.translatedText, analysisResult.entities)}
               </div>
             </div>
 
@@ -367,10 +394,21 @@ export default function ResultsPage() {
                 </ul>
               </div>
             )}
+
+            {/* Entity Relationship Graph */}
+            <div className="mt-4">
+              <div className="text-xs text-witness-grey uppercase tracking-widest mb-3 pb-2 border-b border-witness-border">
+                Entity Relationship Graph
+              </div>
+              <EntityGraph
+                entities={analysisResult.entities}
+                matches={crossReferenceResult?.matches ?? []}
+              />
+            </div>
           </div>
 
           {/* Right — Memo Display */}
-          <div className="w-[420px] flex-shrink-0 overflow-hidden">
+          <div className="w-full md:w-[420px] flex-shrink-0 overflow-hidden">
             <MemoDisplay
               memo={memo}
               crossReferenceResult={crossReferenceResult}
@@ -421,5 +459,6 @@ export default function ResultsPage() {
         )}
       </div>
     </div>
+    </PageTransition>
   )
 }

@@ -118,6 +118,61 @@ ${transcript}`
   return result.data
 }
 
+// ─── Streaming Analysis Call ──────────────────────────────────────────────────
+
+export async function* analyzeTestimonyStream(
+  transcript: string,
+  detectedLanguage: string
+): AsyncGenerator<string, AnalysisResult> {
+  const languageHint = detectedLanguage === 'auto'
+    ? 'Auto-detect the source language from the content.'
+    : `Source language: ${detectedLanguage}.`
+
+  const userMessage = `Analyze the following testimony. ${languageHint}
+
+TESTIMONY:
+${transcript}`
+
+  const stream = await getMistral().chat.stream({
+    model: 'mistral-large-latest',
+    messages: [
+      { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+      { role: 'user', content: userMessage },
+    ],
+    temperature: 0.1,
+    maxTokens: 4096,
+  })
+
+  let accumulated = ''
+  for await (const event of stream) {
+    const delta = event.data?.choices?.[0]?.delta?.content
+    if (delta && typeof delta === 'string') {
+      accumulated += delta
+      yield delta
+    }
+  }
+
+  const cleaned = accumulated
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?\s*```\s*$/i, '')
+    .trim()
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    throw new Error(`Mistral returned invalid JSON: ${cleaned.slice(0, 200)}`)
+  }
+
+  const result = AnalysisResultSchema.safeParse(parsed)
+  if (!result.success) {
+    throw new Error(`Analysis schema validation failed: ${result.error.message}`)
+  }
+
+  return result.data
+}
+
 // ─── Memo Generation Call ────────────────────────────────────────────────────
 
 export async function generateMemo(
@@ -178,4 +233,70 @@ ${JSON.stringify(crossReferenceResult, null, 2)}`
   }
 
   return result.data
+}
+
+// ─── Streaming Memo Generation Call ──────────────────────────────────────────
+
+export async function* generateMemoStream(
+  analysisResult: AnalysisResult,
+  crossReferenceResult: CrossReferenceResult,
+  caseMetadata: CaseMetadata
+): AsyncGenerator<string, EvidentiaryMemo> {
+  const userMessage = `Generate an evidentiary memo from the following analysis.
+
+CASE METADATA:
+- Recorded: ${caseMetadata.recordedAt}
+- Location: ${caseMetadata.location}
+- Source: ${caseMetadata.sourceFile}
+
+ANALYSIS RESULT:
+${JSON.stringify(analysisResult, null, 2)}
+
+CROSS-REFERENCE RESULTS:
+${JSON.stringify(crossReferenceResult, null, 2)}`
+
+  const stream = await getMistral().chat.stream({
+    model: 'mistral-large-latest',
+    messages: [
+      { role: 'system', content: MEMO_SYSTEM_PROMPT },
+      { role: 'user', content: userMessage },
+    ],
+    temperature: 0.2,
+    maxTokens: 2048,
+  })
+
+  let accumulated = ''
+  for await (const event of stream) {
+    const delta = event.data?.choices?.[0]?.delta?.content
+    if (delta && typeof delta === 'string') {
+      accumulated += delta
+      yield delta
+    }
+  }
+
+  const cleaned = accumulated
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?\s*```\s*$/i, '')
+    .trim()
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    throw new Error(`Mistral memo returned invalid JSON`)
+  }
+
+  const withMeta = {
+    ...(parsed as object),
+    entityMap: analysisResult.entities,
+    generatedAt: new Date().toISOString(),
+  }
+
+  const memoResult = EvidentiaryMemoSchema.safeParse(withMeta)
+  if (!memoResult.success) {
+    throw new Error(`Memo schema validation failed: ${memoResult.error.message}`)
+  }
+
+  return memoResult.data
 }

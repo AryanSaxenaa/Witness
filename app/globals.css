@@ -150,3 +150,41 @@ body {
   height: 0;
   pointer-events: none;
 }
+
+/* ─── Print Styles ────────────────────────────────────────────────────────── */
+@media print {
+  * { box-shadow: none !important; animation: none !important; transition: none !important; }
+  html, body { background: #fff !important; color: #000 !important; font-size: 11pt; height: auto; overflow: visible; }
+  body { padding: 0; margin: 0; }
+
+  /* Hide UI chrome */
+  nav[aria-label="Pipeline steps"],
+  .no-print,
+  button,
+  .disclaimer-banner,
+  [data-toaster] { display: none !important; }
+
+  /* Reset layout for flow */
+  .flex { display: block !important; }
+  .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
+  .h-\[calc\(100vh-32px\)\], .h-screen { height: auto !important; }
+  .w-\[350px\], .w-\[400px\], .w-\[420px\] { width: 100% !important; }
+  .border, .border-r, .border-b, .border-t, .border-l { border-color: #ccc !important; }
+  .bg-navy, .bg-navy-light, .bg-\[\#050810\] { background: #fff !important; }
+  .text-white, .text-white\/80, .text-white\/90 { color: #000 !important; }
+  .text-witness-grey { color: #555 !important; }
+  .text-witness-red { color: #6b1010 !important; }
+
+  /* Page breaks */
+  h1, h2, h3, .font-serif { page-break-after: avoid; }
+  table { page-break-inside: avoid; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+
+  /* Entity highlights for print */
+  span[style*="background"] { background: transparent !important; border-bottom: 1px solid #000 !important; }
+
+  /* Strength bars */
+  .bg-green-400, .bg-yellow-400, .bg-red-400 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  @page { margin: 1.5cm; size: A4; }
+}
