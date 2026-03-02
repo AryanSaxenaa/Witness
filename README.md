@@ -1,6 +1,6 @@
 # WITNESS — AI-Powered ICC Evidence Preservation Platform
 
-> **Category: Civic Tool** | **Difficulty: 5/10** | **Goal: Improve transparency and engagement**
+> **Category: Civic Tool** | **Goal: Improve transparency and engagement**
 
 **WITNESS** is an open-source **civic tool** designed to **improve transparency and engagement** in international justice. It is an AI-driven evidence preservation and pre-analysis platform designed for human rights organizations, independent journalists, and civilians. It accepts audio recordings or written testimonies in **25+ languages**, processes them through a multi-stage AI pipeline, cross-references extracted intelligence against five international databases, and produces a structured evidentiary memo formatted to International Criminal Court standards.
 
@@ -11,8 +11,8 @@ In conflict zones and under authoritarian regimes, crucial evidence of human rig
 ## Demo
 
 - **Local Demo:** Run the application locally and click the "Load Demo Testimony" button to evaluate the pipeline with an example witness account.
-- **Live Demo Link:** [Insert deployed Vercel URL here]
-- **Demo Video:** [Insert video walkthrough here]
+- **Live Demo Link:** [https://witness-xi.vercel.app/]
+- **Demo Video:** [https://youtu.be/3yVHgSayMQ4?si=JL4oKXFS0kiOXpmE]
 
 ---
 
