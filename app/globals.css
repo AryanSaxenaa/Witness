@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy: #020412;
+  --color-navy-light: #0a0e26;
+  --color-witness-red: #581C1C;
+  --color-witness-red-bright: #7a2626;
+  --color-witness-red-muted: rgba(88,28,28,0.4);
+  --color-witness-border: #1e2540;
+  --color-witness-grey: #a0a5b8;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+:root {
+  --bg-navy: #020412;
+  --bg-navy-light: #0a0e26;
+  --accent-red: #581C1C;
+  --accent-red-bright: #7a2626;
+  --text-white: #ffffff;
+  --text-grey: #a0a5b8;
+  --border-color: #1e2540;
+  --font-serif: 'Playfair Display', serif;
+  --font-sans: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+body {
+  background-color: var(--bg-navy);
+  color: var(--text-white);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-navy); }
+::-webkit-scrollbar-thumb { background: #1e2540; }
+::-webkit-scrollbar-thumb:hover { background: #2d375e; }
+
+/* TipTap editor styles */
+.tiptap {
+  outline: none;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  color: rgba(160, 165, 184, 0.5);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
