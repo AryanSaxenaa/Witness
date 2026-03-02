@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { DisclaimerBanner } from '@/components/disclaimer-banner'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { Toaster } from 'react-hot-toast'
 
@@ -40,7 +39,6 @@ export default function RootLayout({
       </head>
       <body className="bg-navy text-white font-sans h-screen overflow-hidden antialiased">
         <ErrorBoundary>
-          <DisclaimerBanner />
           {children}
           <Toaster
             position="bottom-right"

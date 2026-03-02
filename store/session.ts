@@ -44,7 +44,7 @@ export interface CaseFile {
 interface SessionStore extends SessionState {
   // Pipeline actions
   setStep: (step: ProcessingStep) => void
-  setInputMode: (mode: 'audio' | 'text') => void
+  setInputMode: (mode: 'audio' | 'text' | 'voice') => void
   setSourceFile: (name: string | null) => void
   setTranscriptionResult: (result: TranscriptionResult) => void
   setAnalysisResult: (result: AnalysisResult) => void

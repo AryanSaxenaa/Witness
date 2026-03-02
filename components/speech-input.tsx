@@ -37,7 +37,7 @@ declare global {
 
 // ─── Supported Languages ─────────────────────────────────────────────────────
 const LANGUAGES = [
-  { code: '',       native: '🌐 Auto-detect (Whisper AI)',  english: 'Auto-detect' },
+  { code: '',       native: 'Auto-detect (Whisper AI)',  english: 'Auto-detect' },
   { code: 'en-US',  native: 'English',               english: 'English' },
   { code: 'ar-SA',  native: 'العربية',                english: 'Arabic' },
   { code: 'uk-UA',  native: 'Українська',             english: 'Ukrainian' },

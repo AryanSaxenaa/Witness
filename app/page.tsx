@@ -107,10 +107,17 @@ export default function Home() {
     setTextInput('')
   }, [setInputMode])
 
+  const handleSelectVoice = useCallback(() => {
+    setInputMode('voice')
+    setAudioFile(null)
+    setTextInput('')
+    setSourceFile('voice-input')
+  }, [setInputMode, setSourceFile])
+
   const handleSpeechTranscript = useCallback((text: string, langCode: string) => {
     setTextInput(prev => prev ? prev + '\n\n' + text : text)
     setSpeechLangCode(langCode)
-    setInputMode('text')
+    setInputMode('voice')
     setSourceFile('voice-input')
   }, [setInputMode, setSourceFile])
 
@@ -136,7 +143,8 @@ export default function Home() {
 
   const canSubmit =
     !isProcessing &&
-    ((inputMode === 'audio' && audioFile) || (inputMode === 'text' && textInput.trim().length > 0))
+    ((inputMode === 'audio' && audioFile)
+      || ((inputMode === 'text' || inputMode === 'voice') && textInput.trim().length > 0))
 
   const handleRetry = useCallback(() => {
     setError(null)
@@ -395,6 +403,18 @@ export default function Home() {
                 >
                   Text Testimony
                 </button>
+                <button
+                  onClick={handleSelectVoice}
+                  className={cn(
+                    'flex-1 py-2 text-xs uppercase tracking-wider border transition-colors',
+                    inputMode === 'voice'
+                      ? 'border-witness-red bg-witness-red/20 text-white'
+                      : 'border-witness-border text-witness-grey hover:text-white'
+                  )}
+                  disabled={isProcessing}
+                >
+                  Voice Testimony
+                </button>
               </div>
 
               {/* Load Demo */}
@@ -418,8 +438,18 @@ export default function Home() {
                   placeholder="Paste or type testimony text here..."
                   initialContent={textInput}
                 />
-                <SpeechInput onTranscript={handleSpeechTranscript} disabled={isProcessing} />
               </>
+            )}
+            {inputMode === 'voice' && (
+              <div className="flex flex-col gap-3">
+                <SpeechInput onTranscript={handleSpeechTranscript} disabled={isProcessing} />
+                {textInput && (
+                  <div className="border border-witness-border p-3 text-xs text-witness-grey bg-white/[0.02]">
+                    <div className="text-[10px] uppercase tracking-widest text-witness-grey mb-2">Captured transcript</div>
+                    <div className="whitespace-pre-wrap leading-relaxed text-white/90">{textInput}</div>
+                  </div>
+                )}
+              </div>
             )}
             {!inputMode && (
               <div className="border border-dashed border-witness-border p-8 text-center">
