@@ -1,6 +1,18 @@
 # WITNESS — AI-Powered ICC Evidence Preservation Platform
 
-**WITNESS** is an AI-driven evidence preservation and pre-analysis platform designed for human rights organizations and international criminal law practitioners. It accepts audio recordings or written testimonies in **25+ languages**, processes them through a multi-stage AI pipeline, cross-references extracted intelligence against five international databases, and produces a structured evidentiary memo formatted to International Criminal Court standards.
+> **Category: Civic Tool** | **Difficulty: 5/10** | **Goal: Improve transparency and engagement**
+
+**WITNESS** is an open-source **civic tool** designed to **improve transparency and engagement** in international justice. It is an AI-driven evidence preservation and pre-analysis platform designed for human rights organizations, independent journalists, and civilians. It accepts audio recordings or written testimonies in **25+ languages**, processes them through a multi-stage AI pipeline, cross-references extracted intelligence against five international databases, and produces a structured evidentiary memo formatted to International Criminal Court standards.
+
+## Why is this project needed?
+
+In conflict zones and under authoritarian regimes, crucial evidence of human rights violations is often lost, destroyed, or recorded in formats that are difficult to verify and process. Human rights defenders and ordinary civilians risk their lives to document atrocities, yet their testimonies frequently fail to meet the rigorous corroboration and formatting standards required by international justice mechanisms like the International Criminal Court (ICC). **WITNESS** bridges this gap. By functioning as a secure, accessible **civic tool**, it empowers anyone to securely preserve evidence and automatically structure it into actionable intelligence. This dramatically improves global transparency and civic engagement by transforming raw field testimonies into robust, cross-referenced documentation, ensuring that the voices of victims are preserved and perpetrators are held accountable.
+
+## Demo
+
+- **Local Demo:** Run the application locally and click the "Load Demo Testimony" button to evaluate the pipeline with an example witness account.
+- **Live Demo Link:** [Insert deployed Vercel URL here]
+- **Demo Video:** [Insert video walkthrough here]
 
 ---
 
