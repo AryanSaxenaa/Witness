@@ -41,9 +41,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const status = (error as { statusCode?: number })?.statusCode
       ?? (error as { status?: number })?.status
-    if (status === 401) {
+    if (status === 401 || (error as { code?: string }).code === 'UNAUTHORIZED') {
       return NextResponse.json(
-        { error: 'Invalid Groq API key. Check GROQ_API_KEY in .env.local.' },
+        { error: 'Invalid Mistral API key. Check MISTRAL_API_KEY in .env.local.' },
         { status: 401 }
       )
     }

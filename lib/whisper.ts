@@ -1,16 +1,8 @@
-import OpenAI from 'openai'
 import { getEnv } from '@/lib/env'
 import type { TranscriptionResult } from '@/types'
 
-function getGroqClient() {
-  return new OpenAI({
-    apiKey: getEnv().GROQ_API_KEY,
-    baseURL: 'https://api.groq.com/openai/v1',
-  })
-}
-
 const SUPPORTED_FORMATS = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/webm', 'audio/ogg']
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 // Groq limit: 25MB
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 // conservative limit for uploads
 
 export class TranscriptionError extends Error {
   public readonly code: string
@@ -25,7 +17,7 @@ export class TranscriptionError extends Error {
 export async function transcribeAudio(file: File): Promise<TranscriptionResult> {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     throw new TranscriptionError(
-      `File exceeds 25MB limit (Groq). Compress your audio or use a shorter clip.`,
+      `File exceeds 25MB limit. Compress your audio or use a shorter clip.`,
       'FILE_TOO_LARGE'
     )
   }
@@ -37,33 +29,56 @@ export async function transcribeAudio(file: File): Promise<TranscriptionResult> 
     )
   }
 
-  const response = await getGroqClient().audio.transcriptions.create({
-    file,
-    model: 'whisper-large-v3',
-    response_format: 'verbose_json',
-    timestamp_granularities: ['segment'],
+  const apiKey = getEnv().MISTRAL_API_KEY
+  if (!apiKey) {
+    throw new TranscriptionError('Missing MISTRAL_API_KEY', 'UNAUTHORIZED')
+  }
+
+  const formData = new FormData()
+  formData.append('model', 'voxtral-mini-latest')
+  formData.append('file', file)
+  formData.append('response_format', 'verbose_json')
+  formData.append('timestamp_granularities[]', 'segment')
+
+  const response = await fetch('https://api.mistral.ai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
   })
 
-  if (!response.text || response.text.trim().length === 0) {
+  const data = await response.json() as Record<string, unknown>
+
+  if (!response.ok) {
+    const message = (data?.error as { message?: string } | undefined)?.message
+      ?? (data?.detail as string | undefined)
+      ?? 'Transcription failed'
+    throw new TranscriptionError(message, 'SERVICE_ERROR')
+  }
+
+  const text = (data.text as string | undefined)?.trim()
+  if (!text) {
     throw new TranscriptionError('No speech detected in audio', 'EMPTY_TRANSCRIPT')
   }
 
-  const segments = (((response as unknown as Record<string, unknown>).segments as Array<{
-    start: number
-    end: number
-    text: string
-    avg_logprob?: number
-  }>) ?? []).map((seg) => ({
-    start: seg.start,
-    end: seg.end,
-    text: seg.text,
-    confidence: seg.avg_logprob ? Math.exp(seg.avg_logprob) : 0.8,
+  const rawSegments = Array.isArray((data as { segments?: unknown }).segments)
+    ? (data as { segments: Array<{ start?: number; end?: number; text?: string; confidence?: number }> }).segments
+    : []
+
+  const segments = rawSegments.map((seg) => ({
+    start: seg.start ?? 0,
+    end: seg.end ?? 0,
+    text: seg.text ?? '',
+    confidence: typeof seg.confidence === 'number' ? seg.confidence : 0.8,
   }))
 
   return {
-    transcript: response.text,
-    detectedLanguage: (response as unknown as Record<string, unknown>).language as string ?? 'unknown',
-    languageConfidence: 0.95,
+    transcript: text,
+    detectedLanguage: (data as { language?: string }).language ?? 'unknown',
+    languageConfidence: typeof (data as { language_probability?: number }).language_probability === 'number'
+      ? (data as { language_probability: number }).language_probability
+      : 0.9,
     segments,
   }
 }
