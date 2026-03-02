@@ -60,12 +60,12 @@ export function MemoDisplay({
       </div>
 
       {/* Tab Bar */}
-      <div className="flex border-b border-witness-border flex-shrink-0">
+      <div className="flex flex-wrap gap-2 border-b border-witness-border flex-shrink-0">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-3 text-xs uppercase tracking-wider transition-colors ${
+            className={`px-4 py-3 text-xs uppercase tracking-wider transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? 'text-white border-b-2 border-witness-red -mb-px'
                 : 'text-witness-grey hover:text-white'
