@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/session'
 import { UploadZone } from '@/components/upload-zone'
 import { TestimonyEditor } from '@/components/testimony-editor'
+import { SpeechInput } from '@/components/speech-input'
 import { ProcessingProgress } from '@/components/processing-progress'
 import { cn } from '@/lib/utils'
+import { fetchWithRetry } from '@/lib/retry'
 import toast from 'react-hot-toast'
 
 const NAV_STEPS = [
@@ -15,6 +17,28 @@ const NAV_STEPS = [
   { num: '03', label: 'Database Cross-Ref' },
   { num: '04', label: 'ICC Memo Export' },
 ]
+
+/** Map processing step → active sidebar index (0-based) */
+function stepToNavIndex(step: string): number {
+  switch (step) {
+    case 'idle':
+      return 0
+    case 'uploading':
+      return 0
+    case 'transcribing':
+      return 1
+    case 'analyzing':
+      return 1
+    case 'crossreferencing':
+      return 2
+    case 'generating':
+      return 3
+    case 'complete':
+      return 3
+    default:
+      return 0
+  }
+}
 
 export default function Home() {
   const router = useRouter()
@@ -31,6 +55,8 @@ export default function Home() {
     setMemo,
     setError,
     clearResults,
+    addAuditEntry,
+    saveCurrentSession,
   } = useSessionStore()
 
   const [audioFile, setAudioFile] = useState<File | null>(null)
@@ -38,6 +64,7 @@ export default function Home() {
   const [location, setLocation] = useState('Unknown')
   const [recordedAt, setRecordedAt] = useState(new Date().toISOString().slice(0, 16))
   const [isLoadingDemo, setIsLoadingDemo] = useState(false)
+  const [speechLangCode, setSpeechLangCode] = useState('')  // BCP-47 code from voice input
 
   const isProcessing = currentStep !== 'idle' && currentStep !== 'error' && currentStep !== 'complete'
 
@@ -57,6 +84,13 @@ export default function Home() {
     setInputMode('audio')
     setTextInput('')
   }, [setInputMode])
+
+  const handleSpeechTranscript = useCallback((text: string, langCode: string) => {
+    setTextInput(prev => prev ? prev + '\n\n' + text : text)
+    setSpeechLangCode(langCode)
+    setInputMode('text')
+    setSourceFile('voice-input')
+  }, [setInputMode, setSourceFile])
 
   const handleLoadDemo = useCallback(async () => {
     setIsLoadingDemo(true)
@@ -107,13 +141,14 @@ export default function Home() {
       // Step 1: Transcribe (audio) or prepare (text)
       if (inputMode === 'audio' && audioFile) {
         setStep('uploading')
+        addAuditEntry({ step: 'uploading', action: 'PIPELINE_START', detail: `Audio: ${audioFile.name}` })
         await new Promise((r) => setTimeout(r, 300))
 
         setStep('transcribing')
         const formData = new FormData()
         formData.append('file', audioFile)
 
-        const transcribeRes = await fetch('/api/transcribe', {
+        const transcribeRes = await fetchWithRetry('/api/transcribe', {
           method: 'POST',
           body: formData,
         })
@@ -129,14 +164,16 @@ export default function Home() {
         detectedLanguage = transcription.detectedLanguage
       } else {
         setStep('uploading')
+        addAuditEntry({ step: 'uploading', action: 'PIPELINE_START', detail: `Text: ${textInput.length} chars` })
         await new Promise((r) => setTimeout(r, 200))
         transcript = textInput
-        detectedLanguage = 'auto'
+        // Use the speech language code if available, otherwise auto-detect
+        detectedLanguage = speechLangCode ? speechLangCode.split('-')[0] : 'auto'
       }
 
       // Step 2: Analyze
       setStep('analyzing')
-      const analyzeRes = await fetch('/api/analyze', {
+      const analyzeRes = await fetchWithRetry('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript, detectedLanguage }),
@@ -152,7 +189,7 @@ export default function Home() {
 
       // Step 3: Cross-reference
       setStep('crossreferencing')
-      const crossRefRes = await fetch('/api/crossreference', {
+      const crossRefRes = await fetchWithRetry('/api/crossreference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ entities: analysis.entities }),
@@ -168,7 +205,7 @@ export default function Home() {
 
       // Step 4: Generate memo
       setStep('generating')
-      const memoRes = await fetch('/api/memo', {
+      const memoRes = await fetchWithRetry('/api/memo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,6 +224,7 @@ export default function Home() {
       setMemo(memo)
 
       setStep('complete')
+      saveCurrentSession(memo.caseRef, location)
       toast.success('Analysis complete — memo generated')
       router.push('/results')
     } catch (err) {
@@ -196,31 +234,49 @@ export default function Home() {
     }
   }
 
+  const activeNavIndex = stepToNavIndex(currentStep)
+
   return (
     <div className="flex h-[calc(100vh-32px)] overflow-hidden">
       {/* Nav Rail */}
       <nav className="flex flex-shrink-0 border-r border-white/10" aria-label="Pipeline steps">
-        {NAV_STEPS.map((step, i) => (
-          <div
-            key={step.num}
-            className={cn(
-              'relative flex items-center justify-center border-r border-white/10 transition-colors',
-              i === 0 ? 'w-[60px] bg-witness-red' : 'w-[48px]'
-            )}
-          >
-            <span className="absolute top-6 text-xs font-mono text-white/50">{step.num}</span>
-            <span
-              className="font-serif text-xs tracking-wide text-white/70"
-              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        {NAV_STEPS.map((step, i) => {
+          const isActive = i === activeNavIndex
+          const isCompleted = i < activeNavIndex
+
+          return (
+            <div
+              key={step.num}
+              className={cn(
+                'relative flex items-center justify-center border-r border-white/10 transition-colors duration-500',
+                isActive ? 'w-[60px] bg-witness-red' : 'w-[48px] bg-[#050810]',
+              )}
             >
-              {step.label}
-            </span>
-          </div>
-        ))}
+              <span className={cn(
+                'absolute top-6 text-xs font-mono transition-colors duration-500',
+                isActive ? 'text-white' : isCompleted ? 'text-witness-red/70' : 'text-white/30'
+              )}>
+                {step.num}
+              </span>
+              <span
+                className={cn(
+                  'font-serif text-xs tracking-wide transition-colors duration-500',
+                  isActive ? 'text-white' : isCompleted ? 'text-witness-red/60' : 'text-white/30'
+                )}
+                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+              >
+                {step.label}
+              </span>
+              {isActive && (
+                <span className="absolute bottom-4 w-1.5 h-1.5 bg-white animate-pulse" />
+              )}
+            </div>
+          )
+        })}
       </nav>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden" role="main" aria-label="Evidence intake workspace">
         {/* Header */}
         <header className="flex items-center justify-between px-8 py-4 border-b border-witness-border flex-shrink-0">
           <div className="flex items-center gap-4">
@@ -230,8 +286,15 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/history')}
+              className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-3 py-1.5"
+              aria-label="View case history"
+            >
+              History
+            </button>
             <span className="text-xs text-witness-grey">System Ready</span>
-            <span className="w-2 h-2 bg-green-500 animate-pulse" />
+            <span className="w-2 h-2 bg-green-500 animate-pulse" aria-hidden="true" />
           </div>
         </header>
 
@@ -255,6 +318,7 @@ export default function Home() {
                     className="flex-1 bg-transparent border-b border-witness-border text-sm text-white focus:border-witness-red outline-none py-1 px-1"
                     placeholder="Enter location..."
                     disabled={isProcessing}
+                    aria-label="Incident location"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -265,6 +329,7 @@ export default function Home() {
                     onChange={(e) => setRecordedAt(e.target.value)}
                     className="flex-1 bg-transparent border-b border-witness-border text-sm text-white focus:border-witness-red outline-none py-1 px-1"
                     disabled={isProcessing}
+                    aria-label="Date and time of recording"
                   />
                 </div>
               </div>
@@ -312,11 +377,14 @@ export default function Home() {
               <UploadZone onFileAccepted={onFileAccepted} isProcessing={isProcessing} />
             )}
             {inputMode === 'text' && (
-              <TestimonyEditor
-                onChange={setTextInput}
-                placeholder="Paste or type testimony text here..."
-                initialContent={textInput}
-              />
+              <>
+                <TestimonyEditor
+                  onChange={setTextInput}
+                  placeholder="Paste or type testimony text here..."
+                  initialContent={textInput}
+                />
+                <SpeechInput onTranscript={handleSpeechTranscript} disabled={isProcessing} />
+              </>
             )}
             {!inputMode && (
               <div className="border border-dashed border-witness-border p-8 text-center">
@@ -358,7 +426,7 @@ export default function Home() {
                     </div>
                     <div className="flex gap-3 items-start">
                       <span className="text-witness-red font-serif w-5">3.</span>
-                      <span><strong className="text-white">Cross-Reference</strong> — Match against ICC & UN databases</span>
+                      <span><strong className="text-white">Cross-Reference</strong> — Match against ICC, UN, ACLED, Amnesty International & Human Rights Watch databases</span>
                     </div>
                     <div className="flex gap-3 items-start">
                       <span className="text-witness-red font-serif w-5">4.</span>
@@ -390,6 +458,7 @@ export default function Home() {
           <button
             onClick={handleBeginAnalysis}
             disabled={!canSubmit}
+            aria-label="Begin analysis pipeline"
             className={cn(
               'px-8 py-3 text-xs uppercase tracking-wider font-medium transition-colors',
               canSubmit
@@ -400,7 +469,7 @@ export default function Home() {
             Begin Analysis →
           </button>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

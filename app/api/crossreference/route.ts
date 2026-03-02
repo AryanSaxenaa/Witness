@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CrossRefInputSchema } from '@/lib/schemas'
 import { crossReferenceEntities } from '@/lib/crossreference'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // Rate limit
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown'
+  const limit = checkRateLimit(ip, { maxRequests: 20, windowMs: 60_000 })
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const body = await req.json()
     const input = CrossRefInputSchema.safeParse(body)

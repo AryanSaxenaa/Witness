@@ -5,7 +5,7 @@ export type SupportedAudioFormat = 'audio/mpeg' | 'audio/wav' | 'audio/mp4' | 'a
 export type EntityType = 'PERSON' | 'LOCATION' | 'ORGANIZATION' | 'DATE' | 'INCIDENT' | 'MILITARY_ID' | 'SIGINT'
 export type EvidentiaryWeight = 'HIGH' | 'MEDIUM' | 'LOW'
 export type MatchType = 'EXACT' | 'FUZZY' | 'DATE_PROXIMITY'
-export type CorroborationSource = 'ICC' | 'UN' | 'ACLED'
+export type CorroborationSource = 'ICC' | 'UN' | 'ACLED' | 'AMNESTY' | 'HRW'
 export type ProcessingStep = 'idle' | 'uploading' | 'transcribing' | 'analyzing' | 'crossreferencing' | 'generating' | 'complete' | 'error'
 
 export interface TranscriptSegment {
@@ -123,3 +123,34 @@ export interface UNIncident {
   sourceReport: string
   sourceUrl: string
 }
+
+export interface ACLEDEvent {
+  eventId: string
+  date: string
+  location: string
+  coordinates: { lat: number; lng: number }
+  eventType: string
+  subEventType: string
+  actors: string[]
+  fatalities: number
+  summary: string
+  keywords: string[]
+  sourceScale: string
+  source: string
+  sourceUrl: string
+}
+
+export interface HRReport {
+  reportId: string
+  organization: string
+  date: string
+  title: string
+  location: string
+  regions: string[]
+  summary: string
+  keywords: string[]
+  perpetrators: string[]
+  violations: string[]
+  sourceUrl: string
+}
+

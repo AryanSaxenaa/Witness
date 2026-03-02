@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/session'
 import { MemoDisplay } from '@/components/memo-display'
 import { EntityTable } from '@/components/entity-table'
-import { formatTimestamp, truncateForVoice } from '@/lib/utils'
+import { formatTimestamp, truncateForVoice, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import type { ExtractedEntity } from '@/types'
@@ -100,8 +100,9 @@ function renderHighlightedTranscript(
 
 export default function ResultsPage() {
   const router = useRouter()
-  const { memo, analysisResult, transcriptionResult, crossReferenceResult, reset } = useSessionStore()
+  const { memo, analysisResult, transcriptionResult, crossReferenceResult, auditLog, reset } = useSessionStore()
   const [isGeneratingVoice, setIsGeneratingVoice] = useState(false)
+  const [showAuditLog, setShowAuditLog] = useState(false)
 
   useEffect(() => {
     if (!memo) {
@@ -139,6 +140,35 @@ export default function ResultsPage() {
       }
     }
   }, [memo])
+
+  const handleExportEvidencePackage = useCallback(() => {
+    if (!memo || !analysisResult) return
+    const evidencePackage = {
+      _format: 'WITNESS Evidence Package v1',
+      exportedAt: new Date().toISOString(),
+      memo,
+      analysis: analysisResult,
+      crossReference: crossReferenceResult,
+      transcription: transcriptionResult,
+      auditLog,
+      chainOfCustody: {
+        toolVersion: '0.1.0',
+        models: {
+          transcription: 'whisper-large-v3 (Groq)',
+          analysis: 'mistral-large-latest',
+        },
+        disclaimer: memo.disclaimer,
+      },
+    }
+    const blob = new Blob([JSON.stringify(evidencePackage, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `WITNESS-EVIDENCE-${memo.caseRef}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Evidence package exported with full audit trail')
+  }, [memo, analysisResult, crossReferenceResult, transcriptionResult, auditLog])
 
   const handleGenerateVoice = useCallback(async () => {
     if (!memo) return
@@ -211,13 +241,39 @@ export default function ResultsPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => router.push('/history')}
+              className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-3 py-1.5"
+              aria-label="View case history"
+            >
+              History
+            </button>
+            <button
+              onClick={() => setShowAuditLog(!showAuditLog)}
+              className={cn(
+                'text-xs uppercase tracking-wider border transition-colors px-3 py-1.5',
+                showAuditLog
+                  ? 'border-witness-red bg-witness-red/20 text-white'
+                  : 'border-witness-border text-witness-grey hover:border-white hover:text-white'
+              )}
+              aria-label="Toggle audit log"
+            >
+              Audit Log
+            </button>
+            <button
+              onClick={handleExportEvidencePackage}
+              className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-green-500 hover:text-green-400 transition-colors px-3 py-1.5"
+              aria-label="Export complete evidence package with audit trail"
+            >
+              Evidence Package
+            </button>
+            <button
               onClick={handleNewAnalysis}
               className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-4 py-2"
             >
               ← New Analysis
             </button>
             <span className="text-xs text-green-400">Analysis Complete</span>
-            <span className="w-2 h-2 bg-green-500" />
+            <span className="w-2 h-2 bg-green-500" aria-hidden="true" />
           </div>
         </header>
 
@@ -322,6 +378,45 @@ export default function ResultsPage() {
             />
           </div>
         </div>
+
+        {/* Audit Log Panel */}
+        {showAuditLog && (
+          <div className="border-t border-witness-border bg-navy-light max-h-[200px] overflow-y-auto flex-shrink-0">
+            <div className="px-6 py-3 flex items-center justify-between border-b border-witness-border/50">
+              <div className="text-[10px] text-witness-grey uppercase tracking-widest">
+                Chain-of-Custody Audit Log — {auditLog.length} entries
+              </div>
+              <button
+                onClick={() => setShowAuditLog(false)}
+                className="text-xs text-witness-grey hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <div className="px-6 py-2">
+              <table className="w-full text-[11px]" aria-label="Audit log">
+                <thead>
+                  <tr className="text-witness-grey/60 uppercase tracking-wider">
+                    <th className="text-left py-1 pr-4 font-normal w-[180px]">Timestamp</th>
+                    <th className="text-left py-1 pr-4 font-normal w-[120px]">Step</th>
+                    <th className="text-left py-1 pr-4 font-normal w-[160px]">Action</th>
+                    <th className="text-left py-1 font-normal">Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLog.map((entry, i) => (
+                    <tr key={i} className="border-t border-witness-border/20 text-witness-grey/80">
+                      <td className="py-1 pr-4 font-mono text-[10px]">{formatDate(entry.timestamp)}</td>
+                      <td className="py-1 pr-4">{entry.step}</td>
+                      <td className="py-1 pr-4 text-white/70">{entry.action}</td>
+                      <td className="py-1 truncate max-w-[300px]" title={entry.detail}>{entry.detail ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

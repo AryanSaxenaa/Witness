@@ -10,7 +10,7 @@ export const EvidentiaryWeightSchema = z.enum(['HIGH', 'MEDIUM', 'LOW'])
 
 export const MatchTypeSchema = z.enum(['EXACT', 'FUZZY', 'DATE_PROXIMITY'])
 
-export const CorroborationSourceSchema = z.enum(['ICC', 'UN', 'ACLED'])
+export const CorroborationSourceSchema = z.enum(['ICC', 'UN', 'ACLED', 'AMNESTY', 'HRW'])
 
 export const ProcessingStepSchema = z.enum([
   'idle', 'uploading', 'transcribing', 'analyzing', 'crossreferencing', 'generating', 'complete', 'error'

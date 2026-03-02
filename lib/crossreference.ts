@@ -1,9 +1,13 @@
-import type { ExtractedEntity, CrossReferenceMatch, CrossReferenceResult, ICCCase, UNIncident } from '@/types'
+import type { ExtractedEntity, CrossReferenceMatch, CrossReferenceResult, ICCCase, UNIncident, ACLEDEvent, HRReport } from '@/types'
 import iccData from '@/data/icc.json'
 import unData from '@/data/un-incidents.json'
+import acledData from '@/data/acled-events.json'
+import hrData from '@/data/hr-reports.json'
 
 const ICC_CASES = iccData as ICCCase[]
 const UN_INCIDENTS = unData as UNIncident[]
+const ACLED_EVENTS = acledData as ACLEDEvent[]
+const HR_REPORTS = hrData as HRReport[]
 
 // ─── Levenshtein Distance ───────────────────────────────────────────────────
 
@@ -129,6 +133,57 @@ export function crossReferenceEntities(entities: ExtractedEntity[]): CrossRefere
         })
       }
     }
+
+    // Match against ACLED armed conflict events
+    for (const event of ACLED_EVENTS) {
+      const result = matchEntityAgainstKeywords(
+        entity,
+        [...event.keywords, ...event.actors]
+      )
+      if (result.matched) {
+        matches.push({
+          entityText: entity.text,
+          matchedCaseId: event.eventId,
+          matchedCaseTitle: `${event.eventType} — ${event.location}`,
+          matchType: result.matchType,
+          corroborationStrength: Math.min(result.strength * entity.confidence, 0.99),
+          source: 'ACLED',
+        })
+        continue
+      }
+
+      if (entity.type === 'DATE' && matchDateProximity(entity.text, event.date)) {
+        matches.push({
+          entityText: entity.text,
+          matchedCaseId: event.eventId,
+          matchedCaseTitle: `${event.eventType} — ${event.location}`,
+          matchType: 'DATE_PROXIMITY',
+          corroborationStrength: Math.min(0.35 * entity.confidence, 0.99),
+          source: 'ACLED',
+        })
+      }
+    }
+
+    // Match against Amnesty International & Human Rights Watch reports
+    for (const report of HR_REPORTS) {
+      const result = matchEntityAgainstKeywords(
+        entity,
+        [...report.keywords, ...report.perpetrators, ...report.violations, ...report.regions]
+      )
+      if (result.matched) {
+        const source = report.organization.includes('Amnesty') ? 'AMNESTY' : 'HRW'
+        matches.push({
+          entityText: entity.text,
+          matchedCaseId: report.reportId,
+          matchedCaseTitle: report.title,
+          matchType: result.matchType,
+          corroborationStrength: Math.min(result.strength * entity.confidence * 0.95, 0.99),
+          source: source as 'AMNESTY' | 'HRW',
+        })
+      }
+    }
+
+
   }
 
   // Deduplicate: keep highest strength per entity+case pair

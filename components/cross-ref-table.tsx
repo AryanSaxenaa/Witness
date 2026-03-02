@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CrossReferenceMatch } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -5,6 +6,16 @@ const SOURCE_COLORS: Record<string, string> = {
   ICC: 'bg-red-900/40 border-red-500 text-red-300',
   UN: 'bg-blue-900/40 border-blue-400 text-blue-300',
   ACLED: 'bg-yellow-900/40 border-yellow-400 text-yellow-300',
+  AMNESTY: 'bg-amber-900/40 border-amber-400 text-amber-300',
+  HRW: 'bg-emerald-900/40 border-emerald-400 text-emerald-300',
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  ICC: 'ICC',
+  UN: 'UN',
+  ACLED: 'ACLED',
+  AMNESTY: 'Amnesty Intl',
+  HRW: 'HRW',
 }
 
 const MATCH_LABELS: Record<string, string> = {
@@ -13,19 +24,58 @@ const MATCH_LABELS: Record<string, string> = {
   DATE_PROXIMITY: 'Date ±7d',
 }
 
+const THRESHOLD_PRESETS = [
+  { label: 'All', value: 0 },
+  { label: '≥30%', value: 0.3 },
+  { label: '≥50%', value: 0.5 },
+  { label: '≥70%', value: 0.7 },
+]
+
 interface CrossRefTableProps {
   matches: CrossReferenceMatch[]
 }
 
 export function CrossRefTable({ matches }: CrossRefTableProps) {
+  const [threshold, setThreshold] = useState(0)
+
+  const filtered = matches.filter(m => m.corroborationStrength >= threshold)
+
   if (matches.length === 0) {
     return <p className="text-witness-grey text-sm italic">No cross-reference matches found.</p>
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs" aria-label="Cross-reference matches">
-        <thead>
+    <div className="flex flex-col gap-3">
+      {/* Confidence Threshold Filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-witness-grey uppercase tracking-widest">Min Strength</span>
+        <div className="flex gap-1">
+          {THRESHOLD_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              onClick={() => setThreshold(preset.value)}
+              className={cn(
+                'px-2 py-0.5 text-[10px] uppercase tracking-wider border transition-colors',
+                threshold === preset.value
+                  ? 'border-witness-red bg-witness-red/20 text-white'
+                  : 'border-witness-border text-witness-grey hover:text-white'
+              )}
+              aria-pressed={threshold === preset.value}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        {threshold > 0 && (
+          <span className="text-[10px] text-witness-grey">
+            Showing {filtered.length} of {matches.length}
+          </span>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs" aria-label="Cross-reference matches">
+          <thead>
           <tr className="border-b border-witness-border text-witness-grey uppercase tracking-wider">
             <th className="text-left py-2 pr-3 font-normal">Entity</th>
             <th className="text-left py-2 pr-3 font-normal">Source</th>
@@ -35,7 +85,7 @@ export function CrossRefTable({ matches }: CrossRefTableProps) {
           </tr>
         </thead>
         <tbody>
-          {matches.map((match, i) => (
+          {filtered.map((match, i) => (
             <tr key={i} className="border-b border-witness-border/40 hover:bg-white/[0.02]">
               <td className="py-2 pr-3 text-white font-medium max-w-[140px] truncate" title={match.entityText}>
                 {match.entityText}
@@ -45,7 +95,7 @@ export function CrossRefTable({ matches }: CrossRefTableProps) {
                   'inline-block px-1.5 py-0.5 border text-[10px] font-semibold tracking-wide',
                   SOURCE_COLORS[match.source] ?? 'bg-witness-red/20 border-witness-red/40 text-red-300'
                 )}>
-                  {match.source}
+                  {SOURCE_LABELS[match.source] ?? match.source}
                 </span>
               </td>
               <td className="py-2 pr-3 text-witness-grey max-w-[180px]">
@@ -75,6 +125,7 @@ export function CrossRefTable({ matches }: CrossRefTableProps) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

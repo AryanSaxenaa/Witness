@@ -23,7 +23,7 @@ const TEXT_STEPS: { key: ProcessingStep; label: string }[] = [
 const STEP_DETAIL: Partial<Record<ProcessingStep, string>> = {
   transcribing: 'Whisper large-v3 — detecting language and timestamps',
   analyzing: 'Mistral Large — preserving legal nuance across languages',
-  crossreferencing: 'Matching entities against ICC & UN databases',
+  crossreferencing: 'Matching entities against ICC, UN, ACLED, Amnesty International & HRW databases',
   generating: 'Synthesizing evidentiary pre-analysis memo',
 }
 

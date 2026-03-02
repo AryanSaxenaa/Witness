@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MemoInputSchema } from '@/lib/schemas'
 import { generateMemo } from '@/lib/mistral'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // Rate limit
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown'
+  const limit = checkRateLimit(ip, { maxRequests: 10, windowMs: 60_000 })
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const body = await req.json()
     const input = MemoInputSchema.safeParse(body)
