@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSessionStore, type SavedSession } from '@/store/session'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
 import toast from 'react-hot-toast'
 
 export default function HistoryPage() {
@@ -43,6 +44,7 @@ export default function HistoryPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button
               onClick={() => router.push('/')}
               className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-4 py-2"

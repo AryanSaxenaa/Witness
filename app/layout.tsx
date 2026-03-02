@@ -15,7 +15,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('witness-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="bg-navy text-white font-sans h-screen overflow-hidden antialiased">
         <ErrorBoundary>
           <DisclaimerBanner />
@@ -24,9 +31,9 @@ export default function RootLayout({
             position="bottom-right"
             toastOptions={{
               style: {
-                background: '#0a0e26',
-                color: '#fff',
-                border: '1px solid #1e2540',
+                background: 'var(--bg-navy-light, #0a0e26)',
+                color: 'var(--text-white, #fff)',
+                border: '1px solid var(--border-color, #1e2540)',
                 borderRadius: '0',
                 fontSize: '13px',
               },

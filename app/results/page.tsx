@@ -7,6 +7,7 @@ import { MemoDisplay } from '@/components/memo-display'
 import { EntityTable } from '@/components/entity-table'
 import { formatTimestamp, truncateForVoice, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
 import toast from 'react-hot-toast'
 import type { ExtractedEntity } from '@/types'
 
@@ -240,6 +241,7 @@ export default function ResultsPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button
               onClick={() => router.push('/history')}
               className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-3 py-1.5"

@@ -28,6 +28,97 @@
   --border-color: #1e2540;
   --font-serif: 'Playfair Display', serif;
   --font-sans: 'Inter', sans-serif;
+  color-scheme: dark;
+}
+
+/* ─── Light Mode ──────────────────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Tailwind @theme overrides */
+  --color-navy: #f0f2f8;
+  --color-navy-light: #ffffff;
+  --color-witness-border: #d1d5db;
+  --color-witness-grey: #4b5563;
+  --color-witness-red: #991b1b;
+  --color-witness-red-bright: #b91c1c;
+  --color-witness-red-muted: rgba(153, 27, 27, 0.12);
+  --color-white: #111827;
+
+  /* Root vars */
+  --bg-navy: #f0f2f8;
+  --bg-navy-light: #ffffff;
+  --border-color: #d1d5db;
+  --text-white: #111827;
+  --text-grey: #4b5563;
+  --accent-red: #991b1b;
+  --accent-red-bright: #b91c1c;
+}
+
+[data-theme="light"] body {
+  background-color: #f0f2f8;
+  color: #111827;
+}
+
+/* Preserve white text on solid red backgrounds */
+[data-theme="light"] .bg-witness-red,
+[data-theme="light"] .bg-witness-red-bright {
+  --color-white: #ffffff;
+  color: #ffffff;
+}
+
+/* Nav rail inactive background */
+[data-theme="light"] .bg-\[\#050810\] {
+  background-color: #e5e7f0;
+}
+
+/* Disclaimer banner */
+[data-theme="light"] .bg-red-950\/50 {
+  background-color: #fef2f2;
+}
+[data-theme="light"] .border-red-900\/70 {
+  border-color: #fecaca;
+}
+
+/* Accent text — ensure readability on light background */
+[data-theme="light"] .text-red-300 { color: #b91c1c; }
+[data-theme="light"] .text-red-300\/70 { color: rgba(185, 28, 28, 0.7); }
+[data-theme="light"] .text-red-400 { color: #dc2626; }
+[data-theme="light"] .text-green-400 { color: #15803d; }
+[data-theme="light"] .text-green-300 { color: #16a34a; }
+[data-theme="light"] .text-blue-300 { color: #1d4ed8; }
+[data-theme="light"] .text-yellow-300 { color: #a16207; }
+[data-theme="light"] .text-yellow-400 { color: #ca8a04; }
+[data-theme="light"] .text-yellow-300\/80 { color: rgba(161, 98, 7, 0.9); }
+[data-theme="light"] .text-amber-300 { color: #b45309; }
+[data-theme="light"] .text-emerald-300 { color: #047857; }
+[data-theme="light"] .text-purple-300 { color: #7e22ce; }
+[data-theme="light"] .text-orange-300 { color: #c2410c; }
+[data-theme="light"] .text-cyan-300 { color: #0e7490; }
+
+/* Badge backgrounds — lighter tints */
+[data-theme="light"] .bg-red-900\/40 { background-color: rgba(254, 202, 202, 0.5); }
+[data-theme="light"] .bg-blue-900\/40 { background-color: rgba(191, 219, 254, 0.5); }
+[data-theme="light"] .bg-green-900\/40 { background-color: rgba(187, 247, 208, 0.5); }
+[data-theme="light"] .bg-yellow-900\/40 { background-color: rgba(254, 249, 195, 0.5); }
+[data-theme="light"] .bg-amber-900\/40 { background-color: rgba(254, 243, 199, 0.5); }
+[data-theme="light"] .bg-emerald-900\/40 { background-color: rgba(167, 243, 208, 0.5); }
+[data-theme="light"] .bg-purple-900\/40 { background-color: rgba(233, 213, 255, 0.5); }
+[data-theme="light"] .bg-orange-900\/40 { background-color: rgba(254, 215, 170, 0.5); }
+[data-theme="light"] .bg-cyan-900\/40 { background-color: rgba(165, 243, 252, 0.5); }
+[data-theme="light"] .bg-green-900\/20 { background-color: rgba(187, 247, 208, 0.3); }
+[data-theme="light"] .bg-yellow-900\/20 { background-color: rgba(254, 249, 195, 0.3); }
+[data-theme="light"] .bg-red-900\/20 { background-color: rgba(254, 202, 202, 0.3); }
+
+/* Scrollbar — light mode */
+[data-theme="light"] ::-webkit-scrollbar-track { background: #f0f2f8; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c1c5d0; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* TipTap editor placeholder */
+[data-theme="light"] .tiptap p.is-editor-empty:first-child::before {
+  color: rgba(75, 85, 99, 0.5);
 }
 
 * {

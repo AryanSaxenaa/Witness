@@ -9,6 +9,7 @@ import { SpeechInput } from '@/components/speech-input'
 import { ProcessingProgress } from '@/components/processing-progress'
 import { cn } from '@/lib/utils'
 import { fetchWithRetry } from '@/lib/retry'
+import { ThemeToggle } from '@/components/theme-toggle'
 import toast from 'react-hot-toast'
 
 const NAV_STEPS = [
@@ -286,6 +287,7 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button
               onClick={() => router.push('/history')}
               className="text-xs uppercase tracking-wider border border-witness-border text-witness-grey hover:border-white hover:text-white transition-colors px-3 py-1.5"

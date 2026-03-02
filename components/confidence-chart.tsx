@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   RadialBarChart,
   RadialBar,
@@ -15,6 +16,20 @@ interface ConfidenceChartProps {
 export function ConfidenceChart({ score, label = 'Veracity Score' }: ConfidenceChartProps) {
   const percentage = Math.round(score * 100 * 10) / 10
   const data = [{ value: percentage }]
+
+  const [bgFill, setBgFill] = useState('#1e2540')
+
+  useEffect(() => {
+    const theme = document.documentElement.getAttribute('data-theme')
+    setBgFill(theme === 'light' ? '#d1d5db' : '#1e2540')
+
+    const observer = new MutationObserver(() => {
+      const t = document.documentElement.getAttribute('data-theme')
+      setBgFill(t === 'light' ? '#d1d5db' : '#1e2540')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
 
   const color =
     percentage >= 80 ? '#4ade80'
@@ -36,7 +51,7 @@ export function ConfidenceChart({ score, label = 'Veracity Score' }: ConfidenceC
             endAngle={-270}
           >
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-            <RadialBar dataKey="value" fill={color} background={{ fill: '#1e2540' }} cornerRadius={0} />
+            <RadialBar dataKey="value" fill={color} background={{ fill: bgFill }} cornerRadius={0} />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
