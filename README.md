@@ -1,4 +1,5 @@
 # WITNESS — AI-Powered ICC Evidence Preservation Platform
+[WITNESS.pdf](https://github.com/user-attachments/files/26179989/WITNESS.pdf)
 
 > **Category: Civic Tool** | **Goal: Improve transparency and engagement**
 
