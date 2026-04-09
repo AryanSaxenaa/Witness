@@ -1,8 +1,8 @@
 import { getEnv } from '@/lib/env'
+import { MAX_AUDIO_SIZE_BYTES } from '@/lib/utils'
 import type { TranscriptionResult } from '@/types'
 
 const SUPPORTED_FORMATS = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/webm', 'audio/ogg']
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 // conservative limit for uploads
 
 export class TranscriptionError extends Error {
   public readonly code: string
@@ -15,7 +15,7 @@ export class TranscriptionError extends Error {
 }
 
 export async function transcribeAudio(file: File): Promise<TranscriptionResult> {
-  if (file.size > MAX_FILE_SIZE_BYTES) {
+  if (file.size > MAX_AUDIO_SIZE_BYTES) {
     throw new TranscriptionError(
       `File exceeds 25MB limit. Compress your audio or use a shorter clip.`,
       'FILE_TOO_LARGE'
@@ -38,6 +38,7 @@ export async function transcribeAudio(file: File): Promise<TranscriptionResult> 
   formData.append('model', 'voxtral-mini-latest')
   formData.append('file', file)
   formData.append('response_format', 'verbose_json')
+  formData.append('timestamp_granularities[]', 'word')
   formData.append('timestamp_granularities[]', 'segment')
 
   const response = await fetch('https://api.mistral.ai/v1/audio/transcriptions', {
@@ -62,16 +63,34 @@ export async function transcribeAudio(file: File): Promise<TranscriptionResult> 
     throw new TranscriptionError('No speech detected in audio', 'EMPTY_TRANSCRIPT')
   }
 
+  const rawWords = Array.isArray((data as { words?: unknown }).words)
+    ? (data as { words: Array<{ word?: string; start?: number; end?: number }> }).words
+    : []
+
+  const wordsLookup = rawWords.map((w) => ({
+    word: w.word ?? '',
+    start: w.start ?? 0,
+    end: w.end ?? 0,
+  }))
+
   const rawSegments = Array.isArray((data as { segments?: unknown }).segments)
     ? (data as { segments: Array<{ start?: number; end?: number; text?: string; confidence?: number }> }).segments
     : []
 
-  const segments = rawSegments.map((seg) => ({
-    start: seg.start ?? 0,
-    end: seg.end ?? 0,
-    text: seg.text ?? '',
-    confidence: typeof seg.confidence === 'number' ? seg.confidence : 0.8,
-  }))
+  const segments = rawSegments.map((seg) => {
+    const segStart = seg.start ?? 0
+    const segEnd = seg.end ?? 0
+    const segWords = wordsLookup.filter(
+      (w) => w.start >= segStart && w.end <= segEnd
+    )
+    return {
+      start: segStart,
+      end: segEnd,
+      text: seg.text ?? '',
+      confidence: typeof seg.confidence === 'number' ? seg.confidence : 0.8,
+      words: segWords.length > 0 ? segWords : undefined,
+    }
+  })
 
   return {
     transcript: text,

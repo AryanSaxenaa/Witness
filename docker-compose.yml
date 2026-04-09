@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   witness:
     build: .
@@ -6,3 +5,4 @@ services:
       - "3000:3000"
     env_file:
       - .env.local
+    restart: unless-stopped

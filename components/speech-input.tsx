@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, MAX_AUDIO_SIZE_BYTES } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 // TypeScript declarations for Web Speech API
@@ -37,7 +37,7 @@ declare global {
 
 // ─── Supported Languages ─────────────────────────────────────────────────────
 const LANGUAGES = [
-  { code: '',       native: 'Auto-detect (Whisper AI)',  english: 'Auto-detect' },
+  { code: '',       native: 'Auto-detect (Mistral Voxtral)',  english: 'Auto-detect' },
   { code: 'en-US',  native: 'English',               english: 'English' },
   { code: 'ar-SA',  native: 'العربية',                english: 'Arabic' },
   { code: 'uk-UA',  native: 'Українська',             english: 'Ukrainian' },
@@ -64,7 +64,7 @@ const LANGUAGES = [
   { code: 'ko-KR',  native: '한국어',                   english: 'Korean' },
 ]
 
-type RecordingMode = 'whisper' | 'browser'
+type RecordingMode = 'voxtral' | 'browser'
 
 interface SpeechInputProps {
   onTranscript: (text: string, langCode: string) => void
@@ -73,10 +73,10 @@ interface SpeechInputProps {
 
 export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps) {
   const [isListening, setIsListening] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false) // Whisper server processing
+  const [isTranscribing, setIsTranscribing] = useState(false) // Voxtral server processing
   const [interimText, setInterimText] = useState('')
   const [finalText, setFinalText] = useState('')
-  const [detectedLang, setDetectedLang] = useState('') // Language detected by Whisper
+  const [detectedLang, setDetectedLang] = useState('') // Language detected by Voxtral
   const [duration, setDuration] = useState(0)
   const [selectedLang, setSelectedLang] = useState('')
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -87,9 +87,9 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
   const hasBrowserSTT = typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
-  // When language is "" (auto-detect) or browser STT is unavailable → use Whisper
+  // When language is "" (auto-detect) or browser STT is unavailable → use Voxtral
   // When a specific language is selected AND browser STT is available → use browser STT (real-time)
-  const mode: RecordingMode = (!selectedLang || !hasBrowserSTT) ? 'whisper' : 'browser'
+  const mode: RecordingMode = (!selectedLang || !hasBrowserSTT) ? 'voxtral' : 'browser'
 
   const selectedLangObj = LANGUAGES.find(l => l.code === selectedLang) ?? LANGUAGES[0]
 
@@ -117,15 +117,20 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
     }
   }, [])
 
-  // ─── Whisper Mode: MediaRecorder → /api/transcribe ──────────────────────────
-  const startWhisperRecording = useCallback(async () => {
+  // ─── Voxtral Mode: MediaRecorder → /api/transcribe ──────────────────────────
+  const startVoxtralRecording = useCallback(async () => {
     if (disabled) return
+
+    if (typeof MediaRecorder === 'undefined') {
+      toast.error('MediaRecorder not available in this browser. Try Chrome, Firefox, or Edge.')
+      return
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       chunksRef.current = []
 
-      // Prefer webm (Whisper supports it), fallback to whatever browser offers
+      // Prefer webm (Voxtral supports it), fallback to whatever browser offers
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/webm')
@@ -144,8 +149,8 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
 
         const audioBlob = new Blob(chunksRef.current, { type: mimeType })
 
-        // Check size (Groq limit: 25MB)
-        if (audioBlob.size > 25 * 1024 * 1024) {
+        // Check size (25MB limit)
+        if (audioBlob.size > MAX_AUDIO_SIZE_BYTES) {
           toast.error('Recording too large (>25MB). Try a shorter recording.')
           return
         }
@@ -155,7 +160,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
           return
         }
 
-        // Send to Whisper via /api/transcribe
+        // Send to Voxtral via /api/transcribe
         setIsTranscribing(true)
         try {
           const ext = mimeType.includes('webm') ? 'webm' : 'm4a'
@@ -177,7 +182,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
           setFinalText(result.transcript)
           setDetectedLang(result.detectedLanguage || '')
           toast.success(
-            `Whisper transcribed ${result.transcript.length} chars` +
+            `Voxtral transcribed ${result.transcript.length} chars` +
             (result.detectedLanguage ? ` (detected: ${result.detectedLanguage})` : '')
           )
         } catch (err) {
@@ -201,7 +206,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
     }
   }, [disabled, startTimer])
 
-  const stopWhisperRecording = useCallback(() => {
+  const stopVoxtralRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
@@ -244,7 +249,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
       if (event.error === 'not-allowed') {
         toast.error('Microphone access denied. Please allow microphone permissions.')
       } else if (event.error === 'language-not-supported') {
-        toast.error('Language not supported by browser STT. Switch to Auto-detect to use Whisper AI instead.')
+        toast.error('Language not supported by browser STT. Switch to Auto-detect to use Mistral Voxtral instead.')
       } else if (event.error !== 'aborted') {
         toast.error(`Speech recognition error: ${event.error}`)
       }
@@ -267,14 +272,14 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
   }, [stopTimer])
 
   // ─── Unified start/stop ─────────────────────────────────────────────────────
-  const handleStart = mode === 'whisper' ? startWhisperRecording : startBrowserSTT
-  const handleStop = mode === 'whisper' ? stopWhisperRecording : stopBrowserSTT
+  const handleStart = mode === 'voxtral' ? startVoxtralRecording : startBrowserSTT
+  const handleStop = mode === 'voxtral' ? stopVoxtralRecording : stopBrowserSTT
 
   const handleConfirm = useCallback(() => {
     const text = (finalText + interimText).trim()
     if (text) {
-      // For Whisper mode, pass the detected language; for browser STT, pass selected lang
-      const langCode = mode === 'whisper' ? detectedLang : selectedLang
+      // For Voxtral mode, pass the detected language; for browser STT, pass selected lang
+      const langCode = mode === 'voxtral' ? detectedLang : selectedLang
       onTranscript(text, langCode)
       toast.success(`Speech captured: ${text.length} characters`)
     }
@@ -340,11 +345,11 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
 
         {/* Mode indicator */}
         <div className="text-[10px] text-witness-grey/60 flex items-center gap-1.5">
-          {mode === 'whisper' ? (
+          {mode === 'voxtral' ? (
             <>
               <span className="inline-block w-1.5 h-1.5 bg-yellow-400/80" />
               <span>
-                <strong>Whisper AI</strong> — records audio, sends to server for transcription.
+                <strong>Mistral Voxtral</strong> — records audio, sends to server for transcription.
                 Automatically detects any language. Best for non-English witnesses.
               </span>
             </>
@@ -382,7 +387,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
                   <svg className="animate-spin h-4 w-4 text-yellow-400" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="31.4 31.4" />
                   </svg>
-                  <span className="text-xs text-yellow-400">Whisper AI is transcribing...</span>
+                  <span className="text-xs text-yellow-400">Mistral Voxtral is transcribing...</span>
                 </div>
                 <span className="text-[10px] text-witness-grey">Auto-detecting language and generating transcript</span>
               </div>
@@ -402,7 +407,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
                   ))}
                 </div>
                 <div className="text-xs text-witness-grey">
-                  {mode === 'whisper'
+                  {mode === 'voxtral'
                     ? 'Recording... speak in any language'
                     : selectedLang === 'ar-SA' ? 'جاري الاستماع... تحدث بوضوح' :
                       selectedLang === 'uk-UA' ? 'Слухаю... говоріть чітко' :
@@ -413,7 +418,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
                       selectedLang === 'hi-IN' ? 'सुन रहा हूँ... स्पष्ट बोलें' :
                       'Listening... speak clearly'}
                 </div>
-                {mode === 'whisper' && (
+                {mode === 'voxtral' && (
                   <span className="text-[10px] text-witness-grey/50">
                     تحدث بأي لغة • Говоріть будь-якою мовою • Parlez dans n&apos;importe quelle langue
                   </span>
@@ -457,7 +462,7 @@ export function SpeechInput({ onTranscript, disabled = false }: SpeechInputProps
                 <line x1="12" y1="19" x2="12" y2="23" />
                 <line x1="8" y1="23" x2="16" y2="23" />
               </svg>
-              {mode === 'whisper' ? 'Record (Whisper)' : 'Record'}
+              {mode === 'voxtral' ? 'Record (Voxtral)' : 'Record'}
             </>
           )}
         </button>

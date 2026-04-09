@@ -2,12 +2,12 @@ import { NextRequest } from 'next/server'
 import { MemoInputSchema } from '@/lib/schemas'
 import { generateMemoStream } from '@/lib/mistral'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/utils'
 
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
-  // Rate limit
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown'
+  const ip = getClientIp(req)
   const limit = checkRateLimit(ip, { maxRequests: 10, windowMs: 60_000 })
   if (!limit.allowed) {
     return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {

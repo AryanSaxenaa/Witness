@@ -13,9 +13,22 @@ export default function HistoryPage() {
   const router = useRouter()
   const { savedSessions, loadSavedSession, deleteSavedSession, caseFiles, createCaseFile, deleteCaseFile, assignSessionToCaseFile } = useSessionStore()
   const [viewMode, setViewMode] = useState<'flat' | 'cases'>('flat')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showNewCaseForm, setShowNewCaseForm] = useState(false)
   const [newCaseName, setNewCaseName] = useState('')
   const [newCaseDesc, setNewCaseDesc] = useState('')
+
+  const filteredSessions = savedSessions.filter((s) => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      s.caseRef.toLowerCase().includes(q) ||
+      s.location.toLowerCase().includes(q) ||
+      s.sourceFile.toLowerCase().includes(q) ||
+      s.memo.confidenceScore.toString().includes(q) ||
+      s.crossReferenceResult.matches.length.toString().includes(q)
+    )
+  })
 
   const handleLoad = (session: SavedSession) => {
     loadSavedSession(session.id)
@@ -69,7 +82,7 @@ export default function HistoryPage() {
           </div>
         </header>
 
-        {/* View Mode Toggle & Case File Controls */}
+        {/* View Mode Toggle, Search & Case File Controls */}
         <div className="flex flex-wrap items-center gap-3 px-4 md:px-8 py-3 border-b border-witness-border bg-navy-light">
           <div className="flex gap-1">
             <button
@@ -95,6 +108,14 @@ export default function HistoryPage() {
               Case Files ({caseFiles.length})
             </button>
           </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by case ref, location, source..."
+            className="flex-1 min-w-[160px] max-w-[320px] bg-navy border border-witness-border text-white text-xs px-3 py-1.5 focus:border-witness-red outline-none placeholder:text-witness-grey/40"
+            aria-label="Search sessions"
+          />
           {viewMode === 'cases' && (
             <button
               onClick={() => setShowNewCaseForm(!showNewCaseForm)}
@@ -240,6 +261,13 @@ export default function HistoryPage() {
           ) : (
             <div className="flex flex-col gap-3">
               {/* Column headers — desktop only */}
+              {searchQuery && filteredSessions.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="font-serif text-lg text-witness-grey/50 mb-2">No results</div>
+                  <p className="text-xs text-witness-grey">No sessions match &ldquo;{searchQuery}&rdquo;</p>
+                </div>
+              ) : (
+              <>
               <div className="hidden md:grid grid-cols-[1fr_140px_120px_100px_80px_80px] gap-4 px-4 text-[10px] text-witness-grey uppercase tracking-widest border-b border-witness-border pb-2">
                 <span>Case Reference</span>
                 <span>Date</span>
@@ -249,7 +277,7 @@ export default function HistoryPage() {
                 <span>Actions</span>
               </div>
 
-              {savedSessions.map((session) => (
+              {filteredSessions.map((session) => (
                 <div
                   key={session.id}
                   className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_140px_120px_100px_80px_80px] md:gap-4 px-4 py-3 border border-witness-border/50 bg-white/[0.02] hover:bg-white/[0.04] transition-colors md:items-center"
@@ -317,9 +345,11 @@ export default function HistoryPage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </>
           )}
         </div>
+      )}
+    </div>
       </main>
     </div>
     </PageTransition>

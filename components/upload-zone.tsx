@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { cn } from '@/lib/utils'
+import { cn, MAX_AUDIO_SIZE_BYTES } from '@/lib/utils'
 
 interface UploadZoneProps {
   onFileAccepted: (file: File) => void
@@ -16,7 +16,7 @@ const ACCEPTED_TYPES = {
   'audio/webm': ['.webm'],
   'audio/ogg': ['.ogg'],
 }
-const MAX_SIZE = 25 * 1024 * 1024 // 25MB (Groq limit)
+
 
 export function UploadZone({ onFileAccepted, isProcessing = false }: UploadZoneProps) {
   const [fileName, setFileName] = useState<string | null>(null)
@@ -34,7 +34,7 @@ export function UploadZone({ onFileAccepted, isProcessing = false }: UploadZoneP
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
-    maxSize: MAX_SIZE,
+    maxSize: MAX_AUDIO_SIZE_BYTES,
     maxFiles: 1,
     disabled: isProcessing,
   })

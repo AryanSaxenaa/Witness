@@ -47,18 +47,32 @@ function renderHighlightedTranscript(
 ): React.ReactNode[] {
   if (!entities.length) return [text]
 
-  const sortedEntities = [...entities].sort((a, b) => {
-    const idxA = text.toLowerCase().indexOf(a.text.toLowerCase())
-    const idxB = text.toLowerCase().indexOf(b.text.toLowerCase())
-    return idxA - idxB
-  })
+  const lowerText = text.toLowerCase()
+
+  // Build a flat list of (start, end, entity) for ALL occurrences of ALL entities
+  const annotations: { start: number; end: number; entity: ExtractedEntity }[] = []
+  for (const entity of entities) {
+    const lowerEntity = entity.text.toLowerCase()
+    let searchFrom = 0
+    while (true) {
+      const idx = lowerText.indexOf(lowerEntity, searchFrom)
+      if (idx === -1) break
+      // Avoid overlapping with an already placed annotation
+      const end = idx + entity.text.length
+      if (!annotations.some((a) => idx < a.end && end > a.start)) {
+        annotations.push({ start: idx, end, entity })
+      }
+      searchFrom = idx + 1
+    }
+  }
+
+  annotations.sort((a, b) => a.start - b.start)
 
   const result: React.ReactNode[] = []
   let lastIndex = 0
 
-  for (const entity of sortedEntities) {
-    const idx = text.toLowerCase().indexOf(entity.text.toLowerCase(), lastIndex)
-    if (idx === -1) continue
+  for (const { start: idx, end, entity } of annotations) {
+    if (idx < lastIndex) continue
 
     if (idx > lastIndex) {
       result.push(text.slice(lastIndex, idx))
@@ -75,7 +89,7 @@ function renderHighlightedTranscript(
         }}
         title={`${entity.type}: ${entity.context}`}
       >
-        {text.slice(idx, idx + entity.text.length)}
+        {text.slice(idx, end)}
         <span
           style={{
             display: 'inline-block',
@@ -92,7 +106,7 @@ function renderHighlightedTranscript(
       </span>
     )
 
-    lastIndex = idx + entity.text.length
+    lastIndex = end
   }
 
   if (lastIndex < text.length) {
@@ -161,7 +175,7 @@ export default function ResultsPage() {
       chainOfCustody: {
         toolVersion: '0.1.0',
         models: {
-          transcription: 'whisper-large-v3 (Groq)',
+          transcription: 'mistral-voxtral-mini-latest',
           analysis: 'mistral-large-latest',
         },
         disclaimer: memo.disclaimer,

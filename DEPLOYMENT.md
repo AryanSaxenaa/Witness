@@ -79,4 +79,3 @@ App runs at http://localhost:3000.
 - **No testimony data is stored.** All processing is in-memory only.
 - **API keys are server-side only.** They are never sent to the browser.
 - **`.env.local` is gitignored.** Never commit API keys.
-- The `NEXT_PUBLIC_` prefix is NOT used for any secret values.

@@ -52,17 +52,6 @@ export function redactWithEntities(text: string, entities: ExtractedEntity[]): s
 }
 
 /**
- * Redact text using regex patterns only (no entity data required)
- */
-export function redactPII(text: string): string {
-  let redacted = text
-  for (const { pattern, replacement } of PII_PATTERNS) {
-    redacted = redacted.replace(pattern, replacement)
-  }
-  return redacted
-}
-
-/**
  * Count how many PII entities exist in the entity list
  */
 export function countPII(entities: ExtractedEntity[]): number {

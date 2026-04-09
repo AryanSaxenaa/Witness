@@ -487,7 +487,7 @@ export default function Home() {
                   <div className="flex flex-col gap-3 text-sm text-witness-grey">
                     <div className="flex gap-3 items-start">
                       <span className="text-witness-red font-serif w-5">1.</span>
-                      <span><strong className="text-white">Transcribe</strong> — Audio → Whisper large-v3 → timestamped transcript</span>
+                      <span><strong className="text-white">Transcribe</strong> — Audio → Mistral Voxtral → timestamped transcript</span>
                     </div>
                     <div className="flex gap-3 items-start">
                       <span className="text-witness-red font-serif w-5">2.</span>

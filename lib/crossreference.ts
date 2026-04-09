@@ -1,13 +1,81 @@
-import type { ExtractedEntity, CrossReferenceMatch, CrossReferenceResult, ICCCase, UNIncident, ACLEDEvent, HRReport } from '@/types'
+import { z } from 'zod'
+import type { ExtractedEntity, CrossReferenceMatch, CrossReferenceResult } from '@/types'
 import iccData from '@/data/icc.json'
 import unData from '@/data/un-incidents.json'
 import acledData from '@/data/acled-events.json'
 import hrData from '@/data/hr-reports.json'
 
-const ICC_CASES = iccData as ICCCase[]
-const UN_INCIDENTS = unData as UNIncident[]
-const ACLED_EVENTS = acledData as ACLEDEvent[]
-const HR_REPORTS = hrData as HRReport[]
+const ICCCaseSchema = z.object({
+  caseId: z.string().min(1),
+  title: z.string().min(1),
+  situation: z.string(),
+  startDate: z.string(),
+  decisionDate: z.string(),
+  charges: z.array(z.string()),
+  keywords: z.array(z.string()),
+  locations: z.array(z.string()),
+  perpetrators: z.array(z.string()),
+  status: z.string(),
+  sourceUrl: z.string(),
+})
+
+const UNIncidentSchema = z.object({
+  incidentId: z.string().min(1),
+  date: z.string(),
+  location: z.string(),
+  coordinates: z.object({ lat: z.number(), lng: z.number() }),
+  incidentType: z.string(),
+  summary: z.string(),
+  keywords: z.array(z.string()),
+  callsigns: z.array(z.string()),
+  unitMarkings: z.array(z.string()),
+  sourceReport: z.string(),
+  sourceUrl: z.string(),
+})
+
+const ACLEDEventSchema = z.object({
+  eventId: z.string().min(1),
+  date: z.string(),
+  location: z.string(),
+  coordinates: z.object({ lat: z.number(), lng: z.number() }),
+  eventType: z.string(),
+  subEventType: z.string(),
+  actors: z.array(z.string()),
+  fatalities: z.number().min(0),
+  summary: z.string(),
+  keywords: z.array(z.string()),
+  sourceScale: z.string(),
+  source: z.string(),
+  sourceUrl: z.string(),
+})
+
+const HRReportSchema = z.object({
+  reportId: z.string().min(1),
+  organization: z.string().min(1),
+  date: z.string(),
+  title: z.string(),
+  location: z.string(),
+  regions: z.array(z.string()),
+  summary: z.string(),
+  keywords: z.array(z.string()),
+  perpetrators: z.array(z.string()),
+  violations: z.array(z.string()),
+  sourceUrl: z.string(),
+})
+
+function validateData<T>(schema: z.ZodSchema<T>, data: unknown, label: string): T {
+  const result = schema.safeParse(data)
+  if (!result.success) {
+    console.error(`[crossreference] ${label} validation failed:`, result.error.issues)
+    throw new Error(`Invalid ${label} data — check data/${label.toLowerCase()}.json`)
+  }
+  return result.data
+}
+
+const ICC_CASES = validateData(z.array(ICCCaseSchema), iccData, 'ICC')
+const UN_INCIDENTS = validateData(z.array(UNIncidentSchema), unData, 'UN')
+const ACLED_EVENTS = validateData(z.array(ACLEDEventSchema), acledData, 'ACLED')
+const HR_REPORTS = validateData(z.array(HRReportSchema), hrData, 'HR')
 
 // ─── Levenshtein Distance ───────────────────────────────────────────────────
 
@@ -47,16 +115,21 @@ function matchEntityAgainstKeywords(
     ...unitMarkings.map(normalizeText),
   ]
 
-  // 1. Exact match
-  if (allTerms.some((term) => term === needle || term.includes(needle) || needle.includes(term))) {
+  // 1. Exact match (full string equality)
+  if (allTerms.some((term) => term === needle)) {
     return { matched: true, matchType: 'EXACT', strength: 0.9 }
   }
 
-  // 2. Fuzzy match (Levenshtein <= 2 for strings longer than 4 chars)
+  // 2. Substring / partial match
+  if (allTerms.some((term) => term.includes(needle) || needle.includes(term))) {
+    return { matched: true, matchType: 'FUZZY', strength: 0.65 }
+  }
+
+  // 3. Fuzzy match (Levenshtein <= 2 for strings longer than 4 chars)
   if (needle.length > 4) {
     for (const term of allTerms) {
       if (term.length > 4 && levenshtein(needle, term) <= 2) {
-        return { matched: true, matchType: 'FUZZY', strength: 0.65 }
+        return { matched: true, matchType: 'FUZZY', strength: 0.5 }
       }
     }
   }

@@ -78,10 +78,26 @@ In conflict zones and under authoritarian regimes, crucial evidence of human rig
 - Viewable audit trail panel on the results page
 - Included in evidence package exports for evidentiary integrity
 
+### Side-by-Side Testimony Comparison
+- Compare two completed sessions in a split-pane view
+- Highlights common and unique extracted entities across testimonies
+- Useful for cross-referencing multiple witness accounts of the same incident
+
+### Case File Organization
+- Group related analysis sessions under named case files
+- Assign/unassign sessions to case files from the history dashboard
+- Enables structured investigation of multi-witness or multi-incident cases
+
 ### Session Persistence and Case History
 - Completed analyses are automatically saved to browser local storage (up to 50 sessions)
 - Full session history dashboard with search, confidence indicators, and match counts
 - Sessions can be reopened or deleted at any time
+
+### PII Redaction
+- One-click redaction of personally identifiable information in transcripts and analysis
+- Uses entity annotations (PERSON, MILITARY_ID, SIGINT) for targeted redaction
+- Regex fallback for emails, phone numbers, IDs, and GPS coordinates
+- Preserves evidentiary structure while protecting witness identities
 
 ### Confidence Threshold Filtering
 - Cross-reference results can be filtered by minimum corroboration strength
@@ -91,7 +107,9 @@ In conflict zones and under authoritarian regimes, crucial evidence of human rig
 ### Security and Reliability
 - Per-IP API rate limiting (sliding window token bucket) on all endpoints
 - Input size validation (100,000 character maximum on analysis endpoint)
+- Audio file size limit (25MB maximum on uploads)
 - Client-side retry with exponential backoff and jitter on all API calls
+- Supports AbortController cancellation of in-flight pipeline
 - Respects server Retry-After headers
 
 ### Interface
@@ -107,17 +125,19 @@ In conflict zones and under authoritarian regimes, crucial evidence of human rig
 ```
 Client (Next.js App Router)
     |
-  |-- /api/transcribe  -->  Mistral Voxtral (voxtral-mini-latest)
-    |-- /api/analyze     -->  Mistral Large (entity extraction, translation, annotation)
-    |-- /api/crossreference --> Local five-database matching engine
-    |-- /api/memo        -->  Mistral Large (ICC memo generation)
-    |-- /api/voice       -->  ElevenLabs Multilingual v2
-    |-- /api/demo        -->  Static demo testimony
+  |-- /api/transcribe       -->  Mistral Voxtral (voxtral-mini-latest)
+  |-- /api/analyze           -->  Mistral Large (entity extraction, translation, annotation)
+  |-- /api/analyze-stream    -->  Mistral Large (SSE streaming analysis)
+  |-- /api/crossreference    -->  Local five-database matching engine
+  |-- /api/memo              -->  Mistral Large (ICC memo generation)
+  |-- /api/memo-stream       -->  Mistral Large (SSE streaming memo generation)
+  |-- /api/voice             -->  ElevenLabs Multilingual v2
+  |-- /api/demo              -->  Static demo testimony
     |
-    +-- Zustand Store (session state, audit log, persistence)
+    +-- Zustand Store (session state, audit log, case files, persistence)
 ```
 
-All AI inference runs server-side via Next.js API routes. No testimony data is persisted on the server. Cross-referencing is performed entirely in-memory against bundled datasets.
+All AI inference runs server-side via Next.js API routes. Analysis and memo generation support SSE (Server-Sent Events) streaming for real-time preview. No testimony data is persisted on the server. Cross-referencing is performed entirely in-memory against bundled datasets.
 
 ---
 
@@ -127,9 +147,9 @@ All AI inference runs server-side via Next.js API routes. No testimony data is p
 |-------|---------|----------------|
 | 1. Ingest | Accept audio file, text input, or microphone recording | Browser MediaRecorder / File API |
 | 2. Transcribe | Generate timestamped transcript with language detection | Mistral Voxtral (voxtral-mini-latest) |
-| 3. Analyze | Extract entities, translate, annotate legal significance | Mistral Large |
+| 3. Analyze | Extract entities, translate, annotate legal significance (streaming SSE) | Mistral Large |
 | 4. Cross-Reference | Match entities against ICC, UN, ACLED, Amnesty, HRW databases | Custom fuzzy matching engine |
-| 5. Generate Memo | Produce structured evidentiary pre-analysis memo | Mistral Large |
+| 5. Generate Memo | Produce structured evidentiary pre-analysis memo (streaming SSE) | Mistral Large |
 | 6. Export | PDF, JSON, evidence package, or audio readout | @react-pdf/renderer, ElevenLabs |
 
 ---
@@ -147,8 +167,10 @@ All AI inference runs server-side via Next.js API routes. No testimony data is p
 | Rich Text Editor | TipTap |
 | PDF Generation | @react-pdf/renderer |
 | Charts | Recharts |
+| PII Redaction | Custom regex + entity-based redaction |
 | Validation | Zod |
 | Testing | Vitest |
+| Streaming | SSE (Server-Sent Events) |
 
 ---
 
@@ -172,8 +194,7 @@ Open [http://localhost:3000](http://localhost:3000).
 |----------|----------|-------------|
 | `MISTRAL_API_KEY` | Yes | Mistral AI API key for analysis, memo generation, and transcription |
 | `ELEVENLABS_API_KEY` | Yes | ElevenLabs API key for voice synthesis |
-| `ELEVENLABS_VOICE_ID` | No | ElevenLabs voice ID (defaults to Rachel) |
-| `NEXT_PUBLIC_APP_URL` | No | Application URL (defaults to localhost:3000) |
+| `ELEVENLABS_VOICE_ID` | No | ElevenLabs voice ID (defaults to Rachel `21m00Tcm4TlvDq8ikWAM`) |
 
 ---
 
@@ -197,47 +218,57 @@ Test coverage includes:
 ```
 Witness/
   app/
-    page.tsx                 # Main evidence intake page
+    page.tsx                 # Main evidence intake page with pipeline orchestration
     layout.tsx               # Root layout with theme support
-    results/page.tsx         # Analysis results and memo display
-    history/page.tsx         # Session history dashboard
+    results/page.tsx         # Analysis results and memo display with audit log
+    history/page.tsx         # Session history dashboard with case file management
+    compare/page.tsx         # Side-by-side testimony comparison
     api/
       analyze/route.ts       # Entity extraction and translation
+      analyze-stream/route.ts # SSE streaming entity extraction
       transcribe/route.ts    # Audio transcription
       crossreference/route.ts # Five-database matching
       memo/route.ts          # ICC memo generation
+      memo-stream/route.ts   # SSE streaming memo generation
       voice/route.ts         # Voice synthesis
       demo/route.ts          # Demo testimony loader
   components/
     theme-toggle.tsx         # Dark/light mode switch
-    speech-input.tsx         # Microphone recording with Voxtral
+    speech-input.tsx         # Microphone recording (Voxtral or browser STT)
     upload-zone.tsx          # Audio file drag-and-drop
     testimony-editor.tsx     # TipTap rich text editor
     processing-progress.tsx  # Pipeline progress indicator
+    skeleton-loader.tsx      # Animated skeleton loading states
+    stream-preview.tsx       # Live SSE streaming text display
+    page-transition.tsx      # CSS-based page entrance animation
     memo-display.tsx         # Tabbed memo viewer
     entity-table.tsx         # Extracted entity display
-    cross-ref-table.tsx      # Cross-reference results with filtering
+    entity-graph.tsx         # SVG entity relationship graph
+    cross-ref-table.tsx      # Cross-reference results with threshold filtering
     confidence-chart.tsx     # Radial veracity score chart
     pdf-template.tsx         # PDF document template
     disclaimer-banner.tsx    # Persistent legal disclaimer
     error-boundary.tsx       # React error boundary
   lib/
-    mistral.ts               # Mistral AI client
-    whisper.ts               # Mistral Voxtral client
+    mistral.ts               # Mistral AI client (analysis, memo, streaming)
+    voxtral.ts               # Mistral Voxtral client (transcription)
     elevenlabs.ts            # ElevenLabs client
     crossreference.ts        # Five-database matching engine
     rate-limit.ts            # Per-IP token bucket rate limiter
-    retry.ts                 # Fetch with exponential backoff
+    retry.ts                 # Fetch with exponential backoff and jitter
     schemas.ts               # Zod validation schemas
-    utils.ts                 # Shared utilities
+    utils.ts                 # Shared utilities (cn, formatting, case refs)
     env.ts                   # Environment variable validation
+    redact.ts                # PII redaction utility
+    stream-client.ts         # SSE stream consumer for client-side
   store/
-    session.ts               # Zustand store with persistence and audit log
+    session.ts               # Zustand store with persistence, audit log, and case files
   data/
     icc.json                 # ICC case registry
     un-incidents.json        # UN incident database
     acled-events.json        # ACLED armed conflict events
     hr-reports.json          # Amnesty International and HRW reports
+    demo-testimony.txt       # Demo testimony text for quick evaluation
   types/
     index.ts                 # All TypeScript interfaces
   __tests__/
@@ -255,6 +286,7 @@ WITNESS is engineered as a **pre-analysis assistive tool**, not a replacement fo
 
 - **No server-side data retention.** Testimony data is processed in-memory and never persisted on the server.
 - **No certainty claims.** All confidence and veracity scores are algorithmically capped below 100%.
+- **Built-in PII redaction.** One-click redaction of personally identifiable information to protect witness identities.
 - **Persistent disclaimer.** A non-dismissible legal disclaimer is displayed on every page and embedded in every exported document.
 - **Human review mandate.** All outputs explicitly recommend review by qualified legal counsel.
 - **Transparent sourcing.** Cross-referencing uses only publicly available ICC, UN, ACLED, Amnesty International, and Human Rights Watch data.

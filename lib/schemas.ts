@@ -18,11 +18,19 @@ export const ProcessingStepSchema = z.enum([
 
 // ─── Transcription ───────────────────────────────────────────────────────────
 
+const TranscriptWordSchema = z.object({
+  word: z.string(),
+  start: z.number().min(0),
+  end: z.number().min(0),
+  confidence: z.number().min(0).max(1).optional(),
+})
+
 export const TranscriptSegmentSchema = z.object({
   start: z.number().min(0),
   end: z.number().min(0),
   text: z.string(),
   confidence: z.number().min(0).max(1),
+  words: z.array(TranscriptWordSchema).optional(),
 })
 
 export const TranscriptionResultSchema = z.object({
@@ -42,7 +50,7 @@ export const ExtractedEntitySchema = z.object({
   context: z.string(),
 })
 
-export const KeyPhraseSchema = z.object({
+const KeyPhraseSchema = z.object({
   phrase: z.string().min(1),
   evidentiarySignificance: z.string(),
   legalRelevance: z.string(),
@@ -84,7 +92,7 @@ export const CrossReferenceResultSchema = z.object({
 
 // ─── Memo ────────────────────────────────────────────────────────────────────
 
-export const CaseMetadataSchema = z.object({
+const CaseMetadataSchema = z.object({
   recordedAt: z.string(),
   location: z.string().default('Unknown'),
   sourceFile: z.string().default('text-input'),
@@ -96,7 +104,7 @@ export const MemoInputSchema = z.object({
   caseMetadata: CaseMetadataSchema,
 })
 
-export const VeracityScoreSchema = z.object({
+const VeracityScoreSchema = z.object({
   score: z.number().min(0).max(0.99),
   basis: z.string(),
 })

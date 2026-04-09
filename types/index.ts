@@ -8,11 +8,19 @@ export type MatchType = 'EXACT' | 'FUZZY' | 'DATE_PROXIMITY'
 export type CorroborationSource = 'ICC' | 'UN' | 'ACLED' | 'AMNESTY' | 'HRW'
 export type ProcessingStep = 'idle' | 'uploading' | 'transcribing' | 'analyzing' | 'crossreferencing' | 'generating' | 'complete' | 'error'
 
+export interface TranscriptWord {
+  word: string
+  start: number
+  end: number
+  confidence?: number
+}
+
 export interface TranscriptSegment {
   start: number
   end: number
   text: string
   confidence: number
+  words?: TranscriptWord[]
 }
 
 export interface TranscriptionResult {

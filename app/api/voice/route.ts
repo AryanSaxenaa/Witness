@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { VoiceInputSchema } from '@/lib/schemas'
 import { synthesizeSpeech } from '@/lib/elevenlabs'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/utils'
 
 export const maxDuration = 30
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const ip = getClientIp(req)
+  const limit = checkRateLimit(ip, { maxRequests: 10, windowMs: 60_000 })
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const body = await req.json()
     const input = VoiceInputSchema.safeParse(body)
@@ -27,6 +38,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   } catch (error) {
     console.error('[/api/voice]', error)
+
+    const status = (error as { statusCode?: number })?.statusCode
+      ?? (error as { status?: number })?.status
+    if (status === 401) {
+      return NextResponse.json(
+        { error: 'Invalid ElevenLabs API key. Check ELEVENLABS_API_KEY in .env.local.' },
+        { status: 401 }
+      )
+    }
+
     return NextResponse.json({ error: 'Voice synthesis unavailable' }, { status: 503 })
   }
 }

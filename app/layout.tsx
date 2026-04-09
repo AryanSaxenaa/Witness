@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { DisclaimerBanner } from '@/components/disclaimer-banner'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'WITNESS' }],
   openGraph: {
     title: 'WITNESS — AI-Powered Evidence Preservation',
-    description: 'Transcribe, analyze, cross-reference and export testimony evidence for ICC proceedings. Powered by Mistral AI and Whisper.',
+    description: 'Transcribe, analyze, cross-reference and export testimony evidence for ICC proceedings. Powered by Mistral AI.',
     type: 'website',
     locale: 'en_US',
     siteName: 'WITNESS',
@@ -39,6 +40,7 @@ export default function RootLayout({
       </head>
       <body className="bg-navy text-white font-sans h-screen overflow-hidden antialiased">
         <ErrorBoundary>
+          <DisclaimerBanner />
           {children}
           <Toaster
             position="bottom-right"
