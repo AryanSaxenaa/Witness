@@ -184,6 +184,8 @@ export const useSessionStore = create<SessionStore>()(
           currentStep: 'complete',
           auditLog: session.auditLog,
           sourceFile: session.sourceFile,
+          error: null,
+          inputMode: null,
         })
       },
 

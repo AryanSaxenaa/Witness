@@ -97,7 +97,7 @@ function levenshtein(a: string, b: string): number {
 }
 
 function normalizeText(text: string): string {
-  return text.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '')
+  return text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '')
 }
 
 // ─── Matching Logic ──────────────────────────────────────────────────────────

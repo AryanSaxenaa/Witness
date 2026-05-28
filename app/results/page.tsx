@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/session'
 import { MemoDisplay } from '@/components/memo-display'
-import { EntityTable } from '@/components/entity-table'
 import { EntityGraph } from '@/components/entity-graph'
 import { formatTimestamp, truncateForVoice, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -141,8 +140,10 @@ export default function ResultsPage() {
       const a = document.createElement('a')
       a.href = url
       a.download = `WITNESS-${memo.caseRef}.pdf`
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 100)
       toast.success('PDF exported successfully')
     } catch (err) {
       console.error('PDF export failed:', err)
@@ -153,8 +154,10 @@ export default function ResultsPage() {
         const a = document.createElement('a')
         a.href = url
         a.download = `WITNESS-${memo.caseRef}.json`
+        document.body.appendChild(a)
         a.click()
-        URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 100)
         toast.error('PDF export failed. JSON fallback downloaded.')
       } catch {
         toast.error('PDF export failed. The memo is still available on screen.')
@@ -186,8 +189,10 @@ export default function ResultsPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `WITNESS-EVIDENCE-${memo.caseRef}.json`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
     toast.success('Evidence package exported with full audit trail')
   }, [memo, analysisResult, crossReferenceResult, transcriptionResult, auditLog])
 

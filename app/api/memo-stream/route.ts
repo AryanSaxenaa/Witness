@@ -62,6 +62,22 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error('[/api/memo-stream]', error)
+
+    if (error instanceof SyntaxError) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('MISTRAL_API_KEY') || message.includes('API key')) {
+      return new Response(JSON.stringify({ error: 'Invalid Mistral API key. Check MISTRAL_API_KEY in .env.local.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     return new Response(JSON.stringify({ error: 'Memo streaming service unavailable' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },

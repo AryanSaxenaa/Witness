@@ -1,4 +1,4 @@
-import { getEnv } from '@/lib/env'
+import { getMistralEnv } from '@/lib/env'
 import { MAX_AUDIO_SIZE_BYTES } from '@/lib/utils'
 import type { TranscriptionResult } from '@/types'
 
@@ -29,10 +29,7 @@ export async function transcribeAudio(file: File): Promise<TranscriptionResult> 
     )
   }
 
-  const apiKey = getEnv().MISTRAL_API_KEY
-  if (!apiKey) {
-    throw new TranscriptionError('Missing MISTRAL_API_KEY', 'UNAUTHORIZED')
-  }
+  const apiKey = getMistralEnv().MISTRAL_API_KEY
 
   const formData = new FormData()
   formData.append('model', 'voxtral-mini-latest')

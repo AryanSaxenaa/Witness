@@ -31,7 +31,46 @@ export async function consumeSSEStream<T>(
 
   while (true) {
     const { done, value } = await reader.read()
-    if (done) break
+    if (done) {
+      // Process any remaining data in buffer before closing
+      if (buffer.trim()) {
+        const messages = buffer.split('\n\n')
+        for (const msg of messages) {
+          if (!msg.trim()) continue
+          const lines = msg.split('\n')
+          let eventType = ''
+          let data = ''
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7)
+            } else if (line.startsWith('data: ')) {
+              data = line.slice(6)
+            }
+          }
+          if (eventType === 'chunk' && data) {
+            try {
+              const text = JSON.parse(data) as string
+              options.onChunk?.(text)
+            } catch {
+              options.onChunk?.(data)
+            }
+          } else if (eventType === 'result' && data) {
+            result = JSON.parse(data) as T
+          } else if (eventType === 'error' && data) {
+            try {
+              const errData = JSON.parse(data)
+              throw new Error(errData.error || 'Stream error')
+            } catch (parseErr) {
+              if (parseErr instanceof Error && parseErr.message !== 'Stream error') {
+                throw new Error(data || 'Stream error')
+              }
+              throw parseErr
+            }
+          }
+        }
+      }
+      break
+    }
 
     buffer += decoder.decode(value, { stream: true })
 
@@ -66,8 +105,15 @@ export async function consumeSSEStream<T>(
       } else if (eventType === 'result' && data) {
         result = JSON.parse(data) as T
       } else if (eventType === 'error' && data) {
-        const errData = JSON.parse(data)
-        throw new Error(errData.error || 'Stream error')
+        try {
+          const errData = JSON.parse(data)
+          throw new Error(errData.error || 'Stream error')
+        } catch (parseErr) {
+          if (parseErr instanceof Error && parseErr.message !== 'Stream error') {
+            throw new Error(data || 'Stream error')
+          }
+          throw parseErr
+        }
       }
     }
   }

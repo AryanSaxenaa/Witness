@@ -1,9 +1,9 @@
-import { getEnv } from '@/lib/env'
+import { getElevenLabsEnv } from '@/lib/env'
 
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1'
 
 export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
-  const e = getEnv()
+  const e = getElevenLabsEnv()
   const response = await fetch(
     `${ELEVENLABS_BASE}/text-to-speech/${e.ELEVENLABS_VOICE_ID}`,
     {

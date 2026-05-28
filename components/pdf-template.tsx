@@ -38,7 +38,8 @@ const styles = StyleSheet.create({
   stamp: {
     borderWidth: 1,
     borderColor: '#000',
-    padding: '3 6',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
     fontSize: 8,
     fontFamily: 'Helvetica-Bold',
   },

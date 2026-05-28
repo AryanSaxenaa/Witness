@@ -15,8 +15,8 @@ const PII_PATTERNS: { pattern: RegExp; replacement: string }[] = [
   { pattern: /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g, replacement: '[PHONE REDACTED]' },
   // National ID / Passport-like numbers (sequences of 6+ digits with optional separators)
   { pattern: /\b[A-Z]{0,2}\d[\d\s-]{5,}\d\b/gi, replacement: '[ID REDACTED]' },
-  // GPS Coordinates
-  { pattern: /\b-?\d{1,3}\.\d{4,},?\s*-?\d{1,3}\.\d{4,}\b/g, replacement: '[COORDS REDACTED]' },
+  // GPS Coordinates (handles negative values with optional space/comma separator)
+  { pattern: /(?<![.\w])-?\d{1,3}\.\d{4,},?\s*-?\d{1,3}\.\d{4,}\b/g, replacement: '[COORDS REDACTED]' },
 ]
 
 /**

@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import type { CrossReferenceMatch } from '@/types'
 import { cn } from '@/lib/utils'

@@ -100,18 +100,23 @@ export default function Home() {
     setInputMode('text')
     setAudioFile(null)
     setSourceFile(null)
+    setSpeechLangCode('')
   }, [setInputMode, setSourceFile])
 
   const handleSelectAudio = useCallback(() => {
     setInputMode('audio')
     setTextInput('')
-  }, [setInputMode])
+    setAudioFile(null)
+    setSourceFile(null)
+    setSpeechLangCode('')
+  }, [setInputMode, setSourceFile])
 
   const handleSelectVoice = useCallback(() => {
     setInputMode('voice')
     setAudioFile(null)
     setTextInput('')
     setSourceFile('voice-input')
+    setSpeechLangCode('')
   }, [setInputMode, setSourceFile])
 
   const handleSpeechTranscript = useCallback((text: string, langCode: string) => {
@@ -189,15 +194,15 @@ export default function Home() {
           signal,
         })
 
+        const transcriptionData = await transcribeRes.json()
+
         if (!transcribeRes.ok) {
-          const err = await transcribeRes.json()
-          throw new Error(err.error || 'Transcription failed')
+          throw new Error(transcriptionData.error || 'Transcription failed')
         }
 
-        const transcription = await transcribeRes.json()
-        setTranscriptionResult(transcription)
-        transcript = transcription.transcript
-        detectedLanguage = transcription.detectedLanguage
+        setTranscriptionResult(transcriptionData)
+        transcript = transcriptionData.transcript
+        detectedLanguage = transcriptionData.detectedLanguage
       } else {
         setStep('uploading')
         addAuditEntry({ step: 'uploading', action: 'PIPELINE_START', detail: `Text: ${textInput.length} chars` })

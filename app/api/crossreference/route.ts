@@ -29,6 +29,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json(result)
   } catch (error) {
     console.error('[/api/crossreference]', error)
+
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+    }
+
     return NextResponse.json({ error: 'Cross-reference service unavailable' }, { status: 503 })
   }
 }

@@ -39,6 +39,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('[/api/voice]', error)
 
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+    }
+
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('ELEVENLABS_API_KEY') || message.includes('API key')) {
+      return NextResponse.json(
+        { error: 'Invalid ElevenLabs API key. Check ELEVENLABS_API_KEY in .env.local.' },
+        { status: 401 }
+      )
+    }
+
     const status = (error as { statusCode?: number })?.statusCode
       ?? (error as { status?: number })?.status
     if (status === 401) {

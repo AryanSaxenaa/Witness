@@ -49,9 +49,14 @@ export function checkRateLimit(
 }
 
 // Clean up stale entries every 5 minutes
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const cutoff = Date.now() - 300_000
   for (const [key, value] of store.entries()) {
     if (value.lastRefill < cutoff) store.delete(key)
   }
 }, 300_000)
+
+// Prevent the interval from keeping the process alive in serverless
+if (typeof cleanupInterval === 'object' && 'unref' in cleanupInterval) {
+  cleanupInterval.unref()
+}

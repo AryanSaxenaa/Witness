@@ -1,10 +1,10 @@
 import { Mistral } from '@mistralai/mistralai'
-import { getEnv } from '@/lib/env'
+import { getMistralEnv } from '@/lib/env'
 import { AnalysisResultSchema, EvidentiaryMemoSchema } from '@/lib/schemas'
 import type { AnalysisResult, CaseMetadata, CrossReferenceResult, EvidentiaryMemo } from '@/types'
 
 function getMistral() {
-  return new Mistral({ apiKey: getEnv().MISTRAL_API_KEY })
+  return new Mistral({ apiKey: getMistralEnv().MISTRAL_API_KEY })
 }
 
 // ─── System Prompts ──────────────────────────────────────────────────────────
